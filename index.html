@@ -1,0 +1,45 @@
+<!doctype html><html lang="pt"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1f4e78"><title>Gestão de Centrais</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial;background:#f3f6f8;color:#17365d}
+header{background:#1f4e78;color:#fff;padding:16px}.wrap{max-width:1050px;margin:auto;padding:14px}
+.card{background:#fff;border-radius:12px;padding:16px;margin:12px 0;box-shadow:0 2px 9px #0001}
+button{background:#1f4e78;color:#fff;border:0;border-radius:8px;padding:10px 14px;cursor:pointer}
+input,select,textarea{width:100%;padding:10px;border:1px solid #ccd5dc;border-radius:7px;margin:5px 0 12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{flex:1}
+.badge{display:inline-block;padding:6px 10px;border-radius:20px;font-weight:bold}.ok{background:#e2f0d9;color:#38761d}.warn{background:#fff2cc;color:#8a6500}.bad{background:#f4cccc;color:#a61c00}
+.small{font-size:13px;color:#667}.hidden{display:none}.photo{width:100%;max-height:420px;object-fit:contain;border-radius:10px;background:#eee}
+table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}th{background:#eaf1f7}
+.event{border-left:5px solid #5b9bd5;padding:10px;margin:8px 0;background:#f7fafc}
+</style></head><body><header><div class="wrap"><h1>Gestão de Centrais de Deteção de Incêndio</h1><div class="small" style="color:#dbe9f4">Dados carregados do Excel</div></div></header>
+<div class="wrap"><section id="home"><div class="card"><h2>Centrais</h2><input id="search" placeholder="Pesquisar central..." oninput="renderList()"><div id="list"></div></div></section>
+<section id="detail" class="hidden"><button onclick="goHome()">← Centrais</button><div class="card"><h2 id="ctitle"></h2><div id="cstatus"></div><div id="cinfo"></div></div>
+<div class="card"><h3>Zonas</h3><div id="zones"></div></div>
+<div class="card"><h3>Equipamentos</h3><div id="equipment"></div></div>
+<div class="card"><h3>Manutenções</h3><div id="maintenance"></div></div>
+<div class="card"><h3>Intervenções</h3><div id="interventions"></div></div>
+<div class="card"><h3>Fotografia</h3><img id="photo" class="photo hidden"><input id="photoIn" type="file" accept="image/*" capture="environment" onchange="savePhoto(event)"><div class="small">As fotografias novas ficam guardadas no navegador deste dispositivo nesta versão.</div></div>
+<div class="card"><h3>Registo rápido</h3><select id="kind"><option>Anomalia</option><option>Manutenção</option><option>Reparação</option><option>Observação</option></select><textarea id="desc" rows="4" placeholder="Descrição"></textarea><button onclick="addEvent()">Guardar registo</button><div id="localHistory"></div></div>
+</section></div>
+<script>
+let excelData=null,current=null,local=JSON.parse(localStorage.getItem('centralLocal')||'{}');
+function save(){localStorage.setItem('centralLocal',JSON.stringify(local))}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function d(v){if(!v)return '';let x=new Date(v);return isNaN(x)?String(v):x.toLocaleDateString('pt-PT')}
+function arr(s){return excelData[s]||[]}
+function state(c){let lid=local[c["ID Central"]]||{}, ev=(lid.events||[]); if(ev.some(e=>e.kind==="Anomalia"||e.kind==="Reparação"))return["ANOMALIA","bad"]; let n=c["Próxima Manutenção"]; if(!n)return["SEM DATA","bad"]; let x=(new Date(n)-new Date())/86400000;if(x<0)return["VENCIDA","bad"];if(x<=30)return["PRÓXIMA","warn"];return["OK","ok"]}
+function renderList(){let q=document.getElementById('search').value.toLowerCase();document.getElementById('list').innerHTML=arr("centrals").filter(c=>String(c["ID Central"]).toLowerCase().includes(q)).map(c=>{let s=state(c);return `<div class="card"><div class="row"><div><b>${esc(c["ID Central"])}</b><div class="small">${esc(c["Local/Instalação"]||"")} — Próxima manutenção: ${d(c["Próxima Manutenção"])||"Não definida"}</div></div><span class="badge ${s[1]}">${s[0]}</span><button onclick="openCentral(${JSON.stringify(c["ID Central"])})">Abrir</button></div></div>`}).join("")}
+function openCentral(id){current=id;let c=arr("centrals").find(x=>x["ID Central"]===id),l=local[id]||{};home.classList.add("hidden");detail.classList.remove("hidden");ctitle.textContent=id;let s=state(c);cstatus.innerHTML=`<span class="badge ${s[1]}">${s[0]}</span>`;
+cinfo.innerHTML=`<div class="grid"><div><b>Código:</b><br>${esc(c["Código/Referência"])}</div><div><b>Local:</b><br>${esc(c["Local/Instalação"])}</div><div><b>Morada:</b><br>${esc(c["Morada"])}</div><div><b>Fabricante:</b><br>${esc(c["Fabricante"])}</div><div><b>Modelo:</b><br>${esc(c["Modelo"])}</div><div><b>Tipo:</b><br>${esc(c["Tipo de Central"])}</div><div><b>N.º zonas:</b><br>${esc(c["N.º Zonas"])}</div><div><b>Última manutenção:</b><br>${d(c["Última Manutenção"])}</div><div><b>Próxima manutenção:</b><br>${d(c["Próxima Manutenção"])}</div></div><p>${esc(c["Observações"]||"")}</p>`;
+let zs=arr("zones").filter(z=>z["ID Central"]===id);zones.innerHTML=zs.length?`<table><tr><th>N.º</th><th>Designação</th><th>Área</th><th>Estado</th></tr>${zs.map(z=>`<tr><td>${esc(z["N.º Zona"])}</td><td>${esc(z["Designação da Zona"])}</td><td>${esc(z["Piso/Área"])}</td><td>${esc(z["Estado"])}</td></tr>`).join("")}</table>`:"<div class='small'>Sem zonas registadas.</div>";
+let es=arr("equipment").filter(e=>e["ID Central"]===id);equipment.innerHTML=es.length?`<table><tr><th>Código</th><th>Tipo</th><th>Detetor</th><th>Local</th><th>Estado</th></tr>${es.map(e=>`<tr><td>${esc(e["Código Equipamento"])}</td><td>${esc(e["Tipo Equipamento"])}</td><td>${esc(e["Tipo Detetor"])}</td><td>${esc(e["Descrição/Local"])}</td><td>${esc(e["Estado"])}</td></tr>`).join("")}</table>`:"<div class='small'>Sem equipamentos associados a esta central.</div>";
+let ms=arr("maintenance").filter(m=>m["ID Central"]===id);maintenance.innerHTML=ms.length?ms.map(m=>`<div class='event'><b>${esc(m["Tipo Manutenção"]||"Manutenção")}</b> — ${d(m["Data"])}<br>${esc(m["Empresa/Técnico"]||"")}<br>${esc(m["Resultado"]||"")}<br><span class='small'>Próxima: ${d(m["Próxima Manutenção"])}</span></div>`).join(""):"<div class='small'>Sem manutenções registadas.</div>";
+let ins=arr("interventions").filter(i=>i["ID Central"]===id);interventions.innerHTML=ins.length?ins.map(i=>`<div class='event'><b>${esc(i["Tipo Intervenção"]||"Intervenção")}</b> — ${d(i["Data"])}<br>${esc(i["Avaria/Problema"]||"")}<br>${esc(i["Trabalho Realizado"]||"")}<br><span class='small'>Estado: ${esc(i["Estado"]||"")}</span></div>`).join(""):"<div class='small'>Sem intervenções registadas.</div>";
+let p=document.getElementById("photo"),ph=l.photo||"";p.src=ph;p.classList.toggle("hidden",!ph);renderLocalHistory()}
+function goHome(){detail.classList.add("hidden");home.classList.remove("hidden");renderList()}
+function savePhoto(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{local[current]=local[current]||{};local[current].photo=r.result;save();openCentral(current)};r.readAsDataURL(f)}
+function addEvent(){let t=desc.value.trim();if(!t)return alert("Introduza uma descrição.");local[current]=local[current]||{};local[current].events=local[current].events||[];local[current].events.unshift({kind:kind.value,desc:t,date:new Date().toISOString()});save();desc.value="";openCentral(current)}
+function renderLocalHistory(){let a=(local[current]||{}).events||[];localHistory.innerHTML=a.length?"<h4>Registos feitos no telemóvel</h4>"+a.map(e=>`<div class='event'><b>${esc(e.kind)}</b> — ${new Date(e.date).toLocaleString("pt-PT")}<br>${esc(e.desc)}</div>`).join(""):""}
+fetch("data.json").then(r=>r.json()).then(x=>{excelData=x;let w=new URLSearchParams(location.search).get("central");if(w&&arr("centrals").some(c=>c["ID Central"]===w))openCentral(w);else renderList()}).catch(()=>{list.innerHTML="<p>Não foi possível carregar os dados do Excel.</p>"})
+</script></body></html>
