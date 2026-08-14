@@ -110,7 +110,7 @@
 
 <script>
 const SUPABASE_URL = "https://uycjgxnzkkibadxvbiyy.supabase.co";
-const SUPABASE_ANON_KEY = "COLOQUE_AQUI_A_PUBLISHABLE_KEY";
+const SUPABASE_ANON_KEY = "sb_publishable_5QFb8wU3xSjTFDbs_Ty-aw_X_Tlmq2-";
 
 const ready = SUPABASE_ANON_KEY !== "COLOQUE_AQUI_A_PUBLISHABLE_KEY";
 const db = ready ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -234,18 +234,74 @@ document.addEventListener("click",e=>{
   if(!e.target.closest("#search") && !e.target.closest("#suggestions")) $("suggestions").classList.add("hidden");
 });
 
-$("loginBtn").onclick=()=> $("loginDialog").showModal();
-$("cancelLogin").onclick=()=> $("loginDialog").close();
-$("loginForm").onsubmit=async e=>{
-  e.preventDefault();
-  if(!ready) return;
+$("loginBtn").onclick=()=>{
   $("loginMsg").innerHTML="";
-  const {error}=await db.auth.signInWithPassword({email:$("email").value,password:$("password").value});
-  if(error){$("loginMsg").innerHTML=`<div class="err">${esc(error.message)}</div>`;return;}
-  $("loginDialog").close(); updateAuthUI();
-  if(current) $("editArea").classList.remove("hidden");
+  $("email").focus();
+  $("loginDialog").showModal();
 };
-$("logoutBtn").onclick=async()=>{await db.auth.signOut();updateAuthUI();$("editArea").classList.add("hidden");};
+
+$("cancelLogin").onclick=()=> $("loginDialog").close();
+
+async function doLogin(){
+  if(!ready){
+    $("loginMsg").innerHTML='<div class="err">A Publishable Key não está configurada no index.html.</div>';
+    return;
+  }
+
+  const email = $("email").value.trim();
+  const password = $("password").value;
+
+  if(!email || !password){
+    $("loginMsg").innerHTML='<div class="err">Preencha o email e a password.</div>';
+    return;
+  }
+
+  const submitBtn = $("loginForm").querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.textContent = "A entrar...";
+  $("loginMsg").innerHTML='<div class="small">A autenticar no Supabase...</div>';
+
+  try{
+    const result = await db.auth.signInWithPassword({email, password});
+
+    if(result.error){
+      $("loginMsg").innerHTML=`<div class="err">${esc(result.error.message)}</div>`;
+      return;
+    }
+
+    $("loginMsg").innerHTML='<div class="ok">Login efetuado com sucesso.</div>';
+    updateAuthUI();
+
+    setTimeout(()=>{
+      $("loginDialog").close();
+      if(current) $("editArea").classList.remove("hidden");
+    }, 500);
+
+  }catch(err){
+    $("loginMsg").innerHTML=`<div class="err">Erro ao tentar entrar: ${esc(err?.message || err)}</div>`;
+  }finally{
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Entrar";
+  }
+}
+
+$("loginForm").addEventListener("submit", e=>{
+  e.preventDefault();
+  doLogin();
+});
+
+$("password").addEventListener("keydown", e=>{
+  if(e.key === "Enter"){
+    e.preventDefault();
+    doLogin();
+  }
+});
+
+$("logoutBtn").onclick=async()=>{
+  await db.auth.signOut();
+  updateAuthUI();
+  $("editArea").classList.add("hidden");
+};
 
 async function updateAuthUI(){
   if(!ready)return;
@@ -268,3 +324,4 @@ if(ready){
 </script>
 </body>
 </html>
+
