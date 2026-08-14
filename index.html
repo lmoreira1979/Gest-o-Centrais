@@ -1,241 +1,391 @@
 <!doctype html>
 <html lang="pt-PT">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gestão de Centrais</title>
-<style>
-body{font-family:Arial,sans-serif;margin:0;background:#f4f6f8;color:#222}
-header{background:#17365d;color:#fff;padding:18px 22px}
-main{max-width:1000px;margin:24px auto;padding:0 16px}
-.card{background:#fff;border-radius:10px;padding:20px;margin-bottom:18px;box-shadow:0 2px 8px #0001}
-input,button{font-size:16px;padding:11px;border-radius:7px}
-input{width:100%;box-sizing:border-box;border:1px solid #bbb}
-button{border:0;background:#17365d;color:#fff;cursor:pointer;margin-top:10px}
-.status{padding:12px;border-radius:7px;background:#eef2f6;margin-top:15px}
-.error{background:#fdecec;color:#9b1c1c}
-.ok{background:#eaf7ea;color:#216b21}
-table{width:100%;border-collapse:collapse;margin-top:12px}
-th,td{text-align:left;padding:9px;border-bottom:1px solid #ddd}
-.muted{color:#666}
-.hidden{display:none}
-.search-wrap{position:relative}
-.suggestions{position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid #bbb;border-top:0;border-radius:0 0 7px 7px;max-height:260px;overflow-y:auto;z-index:20;box-shadow:0 4px 10px #0002}
-.suggestion{padding:12px;cursor:pointer;border-bottom:1px solid #eee}
-.suggestion:hover,.suggestion.active{background:#eef2f6}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gestão de Centrais</title>
+  <style>
+    :root{font-family:Arial,Helvetica,sans-serif;color:#17324d;background:#f4f6f8}
+    *{box-sizing:border-box}
+    body{margin:0;background:#f4f6f8}
+    header{background:#173b63;color:#fff;padding:14px 22px;font-weight:700}
+    main{max-width:900px;margin:22px auto;padding:0 14px}
+    .card{background:#fff;border:1px solid #dfe4ea;border-radius:10px;padding:18px;margin-bottom:16px;box-shadow:0 1px 2px #00000008}
+    h1{font-size:22px;margin:0 0 4px}
+    h2{font-size:17px;margin:0 0 12px}
+    .muted{color:#6b7785;font-size:13px}
+    label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+    .search-row{display:flex;gap:8px}
+    input{width:100%;padding:11px 12px;border:1px solid #aeb8c4;border-radius:6px;font-size:15px}
+    button{border:0;border-radius:6px;padding:10px 15px;background:#173b63;color:#fff;cursor:pointer}
+    button.secondary{background:#e9eef4;color:#17324d}
+    button:hover{filter:brightness(.96)}
+    #suggestions{margin-top:6px;border:1px solid #d8dee6;border-radius:7px;overflow:hidden;display:none;background:#fff}
+    .suggestion{padding:10px 12px;border-bottom:1px solid #edf0f3;cursor:pointer}
+    .suggestion:last-child{border-bottom:0}
+    .suggestion:hover{background:#f1f6fb}
+    .status{padding:9px 11px;border-radius:6px;margin-top:10px;font-size:13px}
+    .ok{background:#e8f7e8;color:#28712d}
+    .warn{background:#fff5d9;color:#805d00}
+    .err{background:#fde9e9;color:#a12626}
+    .hidden{display:none!important}
+    .title-row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .central-title{font-size:21px;font-weight:700;margin-bottom:4px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}
+    .field{padding:8px 0;border-bottom:1px solid #e7ebef;display:grid;grid-template-columns:42% 58%;font-size:13px}
+    .field b{font-weight:600;color:#617080}
+    .field span{overflow-wrap:anywhere}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th,td{text-align:left;padding:8px;border-bottom:1px solid #e3e8ed;vertical-align:top}
+    th{background:#f3f6f9}
+    .badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700}
+    .badge.ok{background:#dff5df}
+    .badge.warn{background:#fff0c2}
+    .badge.bad{background:#f9dcdc}
+    .empty{padding:10px;background:#f7f8fa;border-radius:6px;color:#687482;font-size:13px}
+    .photo{max-width:100%;max-height:320px;border-radius:8px;border:1px solid #dce2e8;margin-top:8px}
+    @media(max-width:650px){.grid{grid-template-columns:1fr}.search-row{flex-direction:column}.title-row{flex-direction:column}}
+  </style>
 </head>
 <body>
-<header><h1>Gestão de Centrais</h1></header>
-<main>
-<div class="card">
-<h2>Pesquisar central</h2>
-<p class="muted">Escreva parte do nome. A pesquisa não distingue maiúsculas de minúsculas.</p>
-<div class="search-wrap">
-<input id="centralInput" autocomplete="off" placeholder="Ex.: CEN, B, Ed. A...">
-<div id="suggestions" class="suggestions hidden"></div>
-</div>
-<button id="searchBtn">Abrir central</button>
-<div id="status" class="status">A carregar as centrais...</div>
-</div>
+<header>Gestão de Centrais</header>
 
-<div id="ficha" class="card hidden">
-<h2 id="nomeCentral"></h2>
-<div id="dadosCentral"></div>
-<h3>Zonas</h3><div id="zonas">A carregar...</div>
-<h3>Equipamentos</h3><div id="equipamentos">A carregar...</div>
-</div>
+<main>
+  <section class="card">
+    <h1>Pesquisar central</h1>
+    <div class="muted">Escreva parte do nome/código. A pesquisa não distingue maiúsculas de minúsculas.</div>
+
+    <div style="margin-top:12px">
+      <label for="search">Central</label>
+      <div class="search-row">
+        <input id="search" autocomplete="off" placeholder="Ex.: cen, CEN-Ed. A, B...">
+        <button id="openBtn" type="button">Abrir central</button>
+      </div>
+      <div id="suggestions"></div>
+    </div>
+
+    <div id="message" class="status hidden"></div>
+  </section>
+
+  <section id="result" class="hidden"></section>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* ============================================================
+   SUPABASE
+   ============================================================
+   URL do projeto:
+   https://uycjgxnzkkibadxvbiyy.supabase.co
+
+   IMPORTANTE:
+   Cole aqui a sua SB PUBLISHABLE KEY (a chave pública).
+   NÃO use a Secret Key.
+   ============================================================ */
+
 const SUPABASE_URL = "https://uycjgxnzkkibadxvbiyy.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_5QFb8wU3xSjTFDbs_Ty-aw_X_Tlmq2-";
 
-const statusEl=document.getElementById("status");
-const fichaEl=document.getElementById("ficha");
-const inputEl=document.getElementById("centralInput");
-const suggestionsEl=document.getElementById("suggestions");
-let centrais=[];
-let filtered=[];
-let activeIndex=-1;
+const searchEl = document.getElementById("search");
+const suggestionsEl = document.getElementById("suggestions");
+const messageEl = document.getElementById("message");
+const resultEl = document.getElementById("result");
+const openBtn = document.getElementById("openBtn");
 
-function status(t,c=""){statusEl.textContent=t;statusEl.className="status "+c}
-function normalizar(v){
-  return String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
-}
-function esc(v){
-  return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))
-}
+let centrais = [];
+let selectedCentral = null;
 
-if(!window.supabase) status("Não foi possível carregar a biblioteca do Supabase.","error");
-const db=window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
-
-async function carregarListaCentrais(){
-  if(!db){status("A ligação ao Supabase não está disponível.","error");return}
-  try{
-    const {data,error}=await db.from("centrais").select("id_central").order("id_central");
-    if(error) throw error;
-    centrais=data||[];
-    status(centrais.length+" centrais disponíveis. Comece a escrever para pesquisar.","ok");
-  }catch(e){
-    status("Não foi possível carregar a lista de centrais: "+(e.message||e),"error");
-  }
+function esc(value){
+  return String(value ?? "")
+    .replaceAll("&","&amp;").replaceAll("<","&lt;")
+    .replaceAll(">","&gt;").replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
 }
 
-function mostrarSugestoes(){
-  const termo=normalizar(inputEl.value);
-  activeIndex=-1;
-  if(!termo || !centrais.length){
-    suggestionsEl.classList.add("hidden");
-    suggestionsEl.innerHTML="";
-    return;
-  }
+function showMessage(text,type="ok"){
+  messageEl.textContent=text;
+  messageEl.className="status "+type;
+}
 
-  const exatas=centrais.filter(c=>normalizar(c.id_central).startsWith(termo));
-  const restantes=centrais.filter(c=>{
-    const n=normalizar(c.id_central);
-    return n.includes(termo) && !n.startsWith(termo);
+function hideMessage(){ messageEl.className="status hidden"; }
+
+function isConfigured(){
+  return SUPABASE_URL && SUPABASE_ANON_KEY &&
+         !SUPABASE_ANON_KEY.includes("COLE_AQUI");
+}
+
+async function supabaseGet(table, params=""){
+  const url = `${SUPABASE_URL}/rest/v1/${table}${params}`;
+  const response = await fetch(url,{
+    method:"GET",
+    headers:{
+      "apikey":SUPABASE_ANON_KEY,
+      "Authorization":`Bearer ${SUPABASE_ANON_KEY}`,
+      "Accept":"application/json"
+    }
   });
-  filtered=[...exatas,...restantes].slice(0,12);
 
-  if(!filtered.length){
-    suggestionsEl.innerHTML='<div class="suggestion muted">Nenhuma central encontrada.</div>';
-    suggestionsEl.classList.remove("hidden");
+  if(!response.ok){
+    const text = await response.text();
+    throw new Error(`${response.status} ${text}`);
+  }
+  return response.json();
+}
+
+/*
+  Carregamos a tabela centrais sem referir "designacao".
+  Assim evitamos o erro:
+  "column centrais.designacao does not exist".
+
+  A pesquisa usa os campos que existem na tabela e compara
+  tudo em minúsculas, permitindo pesquisar sem maiúsculas.
+*/
+async function loadCentrais(){
+  if(!isConfigured()){
+    showMessage("Falta colocar a SB Publishable Key no index.html.","err");
     return;
   }
 
-  suggestionsEl.innerHTML=filtered.map((c,i)=>
-    '<div class="suggestion" data-index="'+i+'">'+esc(c.id_central)+'</div>'
-  ).join("");
-  suggestionsEl.classList.remove("hidden");
+  try{
+    showMessage("A carregar centrais...","ok");
+    const data = await supabaseGet("centrais","?select=*");
+    centrais = Array.isArray(data) ? data : [];
+    hideMessage();
+  }catch(error){
+    console.error(error);
+    showMessage("Erro ao consultar o Supabase: "+error.message,"err");
+  }
+}
 
-  suggestionsEl.querySelectorAll(".suggestion").forEach(el=>{
-    el.addEventListener("mousedown",e=>{
-      e.preventDefault();
-      const c=filtered[Number(el.dataset.index)];
-      inputEl.value=c.id_central;
-      suggestionsEl.classList.add("hidden");
-      abrirCentral(c.id_central);
+function centralLabel(c){
+  return c.id_central || c.codigo_referencia || c.local_instalacao || "Central";
+}
+
+function centralSearchText(c){
+  return Object.values(c).filter(v => v !== null && v !== undefined)
+    .map(v => String(v)).join(" ").toLowerCase();
+}
+
+function findMatches(term){
+  const q=term.trim().toLowerCase();
+  if(!q) return centrais.slice(0,20);
+
+  return centrais
+    .filter(c => centralSearchText(c).includes(q))
+    .sort((a,b)=>{
+      const aa=centralLabel(a).toLowerCase();
+      const bb=centralLabel(b).toLowerCase();
+      const ap=aa.startsWith(q)?0:1;
+      const bp=bb.startsWith(q)?0:1;
+      return ap-bp || aa.localeCompare(bb,"pt");
+    })
+    .slice(0,20);
+}
+
+function renderSuggestions(items){
+  suggestionsEl.innerHTML="";
+  if(!items.length){
+    suggestionsEl.style.display="none";
+    return;
+  }
+
+  items.forEach(c=>{
+    const div=document.createElement("div");
+    div.className="suggestion";
+    div.innerHTML=`<strong>${esc(centralLabel(c))}</strong>
+      <div class="muted">${esc(c.local_instalacao || c.codigo_referencia || "")}</div>`;
+    div.addEventListener("mousedown",(ev)=>{
+      ev.preventDefault();
+      selectedCentral=c;
+      searchEl.value=centralLabel(c);
+      suggestionsEl.style.display="none";
     });
+    suggestionsEl.appendChild(div);
   });
+  suggestionsEl.style.display="block";
 }
 
-async function abrirCentral(valor){
-  const pesquisa=String(valor??inputEl.value).trim();
-  fichaEl.classList.add("hidden");
-  suggestionsEl.classList.add("hidden");
+searchEl.addEventListener("input",()=>{
+  selectedCentral=null;
+  renderSuggestions(findMatches(searchEl.value));
+});
 
-  if(!pesquisa){status("Escreva o nome de uma central.","error");return}
-  if(!db){status("A ligação ao Supabase não está disponível.","error");return}
-  if(SUPABASE_ANON_KEY==="COLOQUE_AQUI_A_SUA_PUBLISHABLE_KEY"){
-    status("Falta colocar a Publishable Key no index.html.","error");return
-  }
+searchEl.addEventListener("focus",()=>{
+  renderSuggestions(findMatches(searchEl.value));
+});
 
-  status("A procurar a central...");
-  try{
-    const {data,error}=await db.from("centrais").select("*").ilike("id_central","%"+pesquisa+"%").limit(1);
-    if(error) throw error;
-    if(!data||!data.length){status("Central não encontrada: "+pesquisa,"error");return}
-
-    const c=data[0];
-    inputEl.value=c.id_central||pesquisa;
-    document.getElementById("nomeCentral").textContent=c.id_central||c.nome||"Central";
-    const campos=Object.entries(c)
-      .filter(([k,v])=>v!==null&&v!=="")
-      .map(([k,v])=>"<tr><th>"+esc(k)+"</th><td>"+esc(v)+"</td></tr>").join("");
-    document.getElementById("dadosCentral").innerHTML="<table>"+campos+"</table>";
-
-    await carregarZonas(c);
-    await carregarEquipamentos(c);
-
-    fichaEl.classList.remove("hidden");
-    status("Central encontrada.","ok");
-  }catch(e){
-    console.error(e);
-    status("Erro ao consultar o Supabase: "+(e.message||e),"error");
-  }
-}
-
-async function carregarZonas(c){
-  const el=document.getElementById("zonas"), id=c.id_central??c.id;
-  try{
-    let q=db.from("zonas").select("*");
-    if(id!=null) q=q.eq("id_central",id);
-    const {data,error}=await q;
-    if(error)throw error;
-    if(!data?.length){
-      el.innerHTML="<p class='muted'>Sem zonas registadas para esta central.</p>";
-      return;
-    }
-    el.innerHTML="<table><tr><th>Zona</th><th>Designação</th><th>Área/Piso</th><th>Estado</th></tr>"+
-      data.map(z=>"<tr><td>"+esc(z.numero_zona)+"</td><td>"+esc(z.designacao)+"</td><td>"+esc(z.piso_area)+"</td><td>"+esc(z.estado)+"</td></tr>").join("")+
-      "</table>";
-  }catch(e){
-    el.innerHTML="<p class='error'>Não foi possível carregar as zonas: "+esc(e.message||e)+"</p>";
-  }
-}
-
-async function carregarEquipamentos(c){
-  const el=document.getElementById("equipamentos"), id=c.id_central??c.id;
-  try{
-    let q=db.from("equipamentos_zona").select("*");
-    if(id!=null) q=q.eq("id_central",id);
-    const {data,error}=await q;
-    if(error)throw error;
-    if(!data?.length){
-      el.innerHTML="<p class='muted'>Sem equipamentos associados nesta tabela.</p>";
-      return;
-    }
-    const cols=Object.keys(data[0]);
-    el.innerHTML="<table><tr>"+cols.map(x=>"<th>"+esc(x)+"</th>").join("")+"</tr>"+
-      data.map(r=>"<tr>"+cols.map(x=>"<td>"+esc(r[x])+"</td>").join("")+"</tr>").join("")+
-      "</table>";
-  }catch(e){
-    el.innerHTML="<p class='error'>Não foi possível carregar os equipamentos: "+esc(e.message||e)+"</p>";
-  }
-}
-
-inputEl.addEventListener("input",mostrarSugestoes);
-
-inputEl.addEventListener("keydown",e=>{
-  if(e.key==="ArrowDown"){
-    if(filtered.length){
-      e.preventDefault();
-      activeIndex=(activeIndex+1)%filtered.length;
-      suggestionsEl.querySelectorAll(".suggestion").forEach((el,i)=>el.classList.toggle("active",i===activeIndex));
-    }
-    return;
-  }
-  if(e.key==="ArrowUp"){
-    if(filtered.length){
-      e.preventDefault();
-      activeIndex=(activeIndex-1+filtered.length)%filtered.length;
-      suggestionsEl.querySelectorAll(".suggestion").forEach((el,i)=>el.classList.toggle("active",i===activeIndex));
-    }
-    return;
-  }
-  if(e.key==="Enter"){
-    e.preventDefault();
-    if(activeIndex>=0 && filtered[activeIndex]){
-      inputEl.value=filtered[activeIndex].id_central;
-      suggestionsEl.classList.add("hidden");
-      abrirCentral(filtered[activeIndex].id_central);
-    }else{
-      abrirCentral();
-    }
-  }
-  if(e.key==="Escape"){
-    suggestionsEl.classList.add("hidden");
+document.addEventListener("click",(e)=>{
+  if(!e.target.closest("#search") && !e.target.closest("#suggestions")){
+    suggestionsEl.style.display="none";
   }
 });
 
-document.addEventListener("click",e=>{
-  if(!e.target.closest(".search-wrap")) suggestionsEl.classList.add("hidden");
+async function openSelected(){
+  const term=searchEl.value.trim();
+
+  if(selectedCentral){
+    await showCentral(selectedCentral);
+    return;
+  }
+
+  const matches=findMatches(term);
+
+  if(!term){
+    showMessage("Escreva o nome ou código da central.","warn");
+    return;
+  }
+
+  if(matches.length===1){
+    await showCentral(matches[0]);
+  }else if(matches.length>1){
+    renderSuggestions(matches);
+    showMessage("Existem várias correspondências. Escolha uma das sugestões.","warn");
+  }else{
+    showMessage("Central não encontrada.","warn");
+  }
+}
+
+openBtn.addEventListener("click",openSelected);
+searchEl.addEventListener("keydown",e=>{
+  if(e.key==="Enter") openSelected();
 });
 
-document.getElementById("searchBtn").addEventListener("click",()=>abrirCentral());
-carregarListaCentrais();
+function prettyLabel(key){
+  const labels={
+    id_central:"ID central",
+    codigo_referencia:"Código referência",
+    local_instalacao:"Local instalação",
+    morada:"Morada",
+    fabricante:"Fabricante",
+    modelo:"Modelo",
+    numero_serie:"Número de série",
+    tipo_central:"Tipo central",
+    estado:"Estado",
+    ultima_manutencao:"Última manutenção",
+    proxima_manutencao:"Próxima manutenção",
+    observacoes:"Observações",
+    fotografia_url:"Fotografia"
+  };
+  return labels[key] || key.replaceAll("_"," ");
+}
+
+function formatValue(key,value){
+  if(value===null || value===undefined || value==="") return "—";
+  if((key==="ultima_manutencao" || key==="proxima_manutencao") &&
+     /^\\d{4}-\\d{2}-\\d{2}/.test(String(value))){
+    const [y,m,d]=String(value).slice(0,10).split("-");
+    return `${d}/${m}/${y}`;
+  }
+  if(typeof value==="object") return JSON.stringify(value);
+  return String(value);
+}
+
+function statusBadge(value){
+  const s=String(value||"").toLowerCase();
+  if(["ativa","ativo","ok","normal"].includes(s))
+    return `<span class="badge ok">${esc(value)}</span>`;
+  if(["inativa","inativo","avaria","anómala","anomalia"].some(x=>s.includes(x)))
+    return `<span class="badge bad">${esc(value)}</span>`;
+  return `<span class="badge warn">${esc(value || "—")}</span>`;
+}
+
+async function loadRelated(table,idCentral){
+  try{
+    const rows=await supabaseGet(
+      table,
+      `?id_central=eq.${encodeURIComponent(idCentral)}&select=*`
+    );
+    return Array.isArray(rows)?rows:[];
+  }catch(error){
+    console.warn(`Não foi possível carregar ${table}:`,error);
+    return [];
+  }
+}
+
+function renderTable(rows, title){
+  if(!rows.length) return `
+    <section class="card">
+      <h2>${esc(title)}</h2>
+      <div class="empty">Sem registos associados.</div>
+    </section>`;
+
+  const keys=[];
+  rows.forEach(r=>Object.keys(r).forEach(k=>{
+    if(!keys.includes(k)) keys.push(k);
+  }));
+
+  const shownKeys=keys.filter(k=>k!=="created_at" && k!=="updated_at");
+
+  return `
+    <section class="card">
+      <h2>${esc(title)}</h2>
+      <div style="overflow:auto">
+        <table>
+          <thead><tr>${shownKeys.map(k=>`<th>${esc(prettyLabel(k))}</th>`).join("")}</tr></thead>
+          <tbody>
+            ${rows.map(r=>`<tr>${shownKeys.map(k=>`<td>${esc(formatValue(k,r[k]))}</td>`).join("")}</tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>`;
+}
+
+async function showCentral(c){
+  selectedCentral=c;
+  suggestionsEl.style.display="none";
+  hideMessage();
+
+  const id=c.id_central;
+  if(!id){
+    showMessage("A central não tem id_central.","err");
+    return;
+  }
+
+  resultEl.classList.remove("hidden");
+  resultEl.innerHTML=`
+    <section class="card">
+      <div class="title-row">
+        <div>
+          <div class="central-title">${esc(centralLabel(c))}</div>
+          <div class="muted">${esc(c.local_instalacao || "")}</div>
+        </div>
+        <button class="secondary" type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})">Voltar à pesquisa</button>
+      </div>
+      <div class="grid" style="margin-top:14px">
+        ${Object.entries(c)
+          .filter(([k])=>k!=="created_at" && k!=="updated_at" && k!=="fotografia_url")
+          .map(([k,v])=>`
+            <div class="field">
+              <b>${esc(prettyLabel(k))}</b>
+              <span>${k==="estado" ? statusBadge(v) : esc(formatValue(k,v))}</span>
+            </div>`).join("")}
+      </div>
+      ${c.fotografia_url ? `<div style="margin-top:14px"><b>Fotografia</b><br>
+        <img class="photo" src="${esc(c.fotografia_url)}" alt="Fotografia da central"
+             onerror="this.style.display='none'"></div>` : ""}
+    </section>
+    <div id="relatedLoading" class="card muted">A carregar zonas, equipamentos e manutenções...</div>
+    <div id="related"></div>
+  `;
+
+  const [zonas,equipamentos,manutencoes,intervencoes]=await Promise.all([
+    loadRelated("zonas",id),
+    loadRelated("equipamentos",id),
+    loadRelated("manutencoes",id),
+    loadRelated("intervencoes",id)
+  ]);
+
+  document.getElementById("relatedLoading")?.remove();
+  const related=document.getElementById("related");
+  if(related){
+    related.innerHTML =
+      renderTable(zonas,"Zonas") +
+      renderTable(equipamentos,"Equipamentos") +
+      renderTable(manutencoes,"Manutenções") +
+      renderTable(intervencoes,"Intervenções");
+  }
+}
+
+loadCentrais();
 </script>
 </body>
 </html>
