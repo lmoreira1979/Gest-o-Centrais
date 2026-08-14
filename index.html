@@ -410,21 +410,34 @@ $("editForm").onsubmit=async e=>{
   $("editMsg").innerHTML='<div class="small">A gravar no Supabase...</div>';
 
   try{
-    const {data,error}=await db.from("centrais")
+    const centralId = current.id_central;
+
+    const {error}=await db.from("centrais")
       .update(payload)
-      .eq("id_central",current.id_central)
-      .select()
-      .single();
+      .eq("id_central", centralId);
 
     if(error) throw error;
 
-    current=data;
-    const idx=allCentrals.findIndex(c=>c.id_central===data.id_central);
-    if(idx>=0) allCentrals[idx]=data;
+    // Recarrega os dados através da consulta normal, sem exigir que o UPDATE
+    // devolva exatamente uma linha. Isto evita o erro "Cannot coerce the
+    // result to a single JSON object" quando o Supabase não devolve a linha
+    // atualizada por causa das políticas de acesso.
+    const {data:refreshed,error:refreshError}=await db.from("centrais")
+      .select("id_central,codigo_referencia,local_instalacao,morada,fabricante,modelo,numero_serie,tipo_central,estado,ultima_manutencao,proxima_manutencao,observacoes,fotografia_url")
+      .eq("id_central", centralId)
+      .limit(1);
+
+    if(refreshError) throw refreshError;
+
+    if(refreshed && refreshed.length){
+      current=refreshed[0];
+      const idx=allCentrals.findIndex(c=>c.id_central===centralId);
+      if(idx>=0) allCentrals[idx]=current;
+    }
 
     $("editMsg").innerHTML='<div class="ok">Alterações guardadas com sucesso.</div>';
-    await openCentral(data.id_central);
     $("editForm").classList.add("hidden");
+    await openCentral(centralId);
   }catch(err){
     $("editMsg").innerHTML=`<div class="err">Não foi possível guardar: ${esc(err?.message || err)}</div>`;
   }finally{
