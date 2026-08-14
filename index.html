@@ -2,390 +2,269 @@
 <html lang="pt-PT">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Gestão de Centrais</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <style>
-    :root{font-family:Arial,Helvetica,sans-serif;color:#17324d;background:#f4f6f8}
-    *{box-sizing:border-box}
-    body{margin:0;background:#f4f6f8}
-    header{background:#173b63;color:#fff;padding:14px 22px;font-weight:700}
-    main{max-width:900px;margin:22px auto;padding:0 14px}
-    .card{background:#fff;border:1px solid #dfe4ea;border-radius:10px;padding:18px;margin-bottom:16px;box-shadow:0 1px 2px #00000008}
-    h1{font-size:22px;margin:0 0 4px}
-    h2{font-size:17px;margin:0 0 12px}
-    .muted{color:#6b7785;font-size:13px}
-    label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
-    .search-row{display:flex;gap:8px}
-    input{width:100%;padding:11px 12px;border:1px solid #aeb8c4;border-radius:6px;font-size:15px}
-    button{border:0;border-radius:6px;padding:10px 15px;background:#173b63;color:#fff;cursor:pointer}
-    button.secondary{background:#e9eef4;color:#17324d}
-    button:hover{filter:brightness(.96)}
-    #suggestions{margin-top:6px;border:1px solid #d8dee6;border-radius:7px;overflow:hidden;display:none;background:#fff}
-    .suggestion{padding:10px 12px;border-bottom:1px solid #edf0f3;cursor:pointer}
-    .suggestion:last-child{border-bottom:0}
-    .suggestion:hover{background:#f1f6fb}
-    .status{padding:9px 11px;border-radius:6px;margin-top:10px;font-size:13px}
-    .ok{background:#e8f7e8;color:#28712d}
-    .warn{background:#fff5d9;color:#805d00}
-    .err{background:#fde9e9;color:#a12626}
-    .hidden{display:none!important}
-    .title-row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-    .central-title{font-size:21px;font-weight:700;margin-bottom:4px}
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px}
-    .field{padding:8px 0;border-bottom:1px solid #e7ebef;display:grid;grid-template-columns:42% 58%;font-size:13px}
-    .field b{font-weight:600;color:#617080}
-    .field span{overflow-wrap:anywhere}
-    table{width:100%;border-collapse:collapse;font-size:12px}
-    th,td{text-align:left;padding:8px;border-bottom:1px solid #e3e8ed;vertical-align:top}
-    th{background:#f3f6f9}
-    .badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700}
-    .badge.ok{background:#dff5df}
-    .badge.warn{background:#fff0c2}
-    .badge.bad{background:#f9dcdc}
-    .empty{padding:10px;background:#f7f8fa;border-radius:6px;color:#687482;font-size:13px}
-    .photo{max-width:100%;max-height:320px;border-radius:8px;border:1px solid #dce2e8;margin-top:8px}
-    @media(max-width:650px){.grid{grid-template-columns:1fr}.search-row{flex-direction:column}.title-row{flex-direction:column}}
+    body{font-family:Arial,sans-serif;margin:0;background:#f3f4f6;color:#172033}
+    header{background:#173b68;color:#fff;padding:18px 24px}
+    main{max-width:1050px;margin:24px auto;padding:0 16px}
+    .card{background:#fff;border-radius:12px;padding:20px;margin-bottom:18px;box-shadow:0 2px 10px #00000012}
+    h1,h2,h3{margin-top:0}
+    input,button,select{font:inherit;padding:10px 12px;border-radius:8px;border:1px solid #cbd5e1}
+    input{width:100%;box-sizing:border-box}
+    button{cursor:pointer;background:#173b68;color:#fff;border:0}
+    button.secondary{background:#e5e7eb;color:#172033}
+    .row{display:flex;gap:10px;align-items:center}
+    .row>*{flex:1}
+    .suggestions{border:1px solid #d1d5db;border-top:0;background:#fff;max-height:260px;overflow:auto}
+    .suggestion{padding:10px 12px;cursor:pointer;border-bottom:1px solid #eee}
+    .suggestion:hover{background:#f1f5f9}
+    .ok{color:#166534;background:#dcfce7;padding:7px 10px;border-radius:999px;display:inline-block}
+    .warn{color:#92400e;background:#fef3c7;padding:7px 10px;border-radius:999px;display:inline-block}
+    .err{color:#991b1b;background:#fee2e2;padding:10px;border-radius:8px}
+    table{width:100%;border-collapse:collapse}
+    td{padding:7px;border-bottom:1px solid #e5e7eb;vertical-align:top}
+    td:first-child{font-weight:bold;width:230px}
+    .hidden{display:none}
+    #qr{margin:12px 0}
+    .small{font-size:13px;color:#64748b}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    dialog{border:0;border-radius:12px;padding:0;max-width:420px;width:calc(100% - 30px);box-shadow:0 15px 50px #0004}
+    dialog::backdrop{background:#0007}
+    .modal{padding:22px}
   </style>
 </head>
 <body>
-<header>Gestão de Centrais</header>
+<header>
+  <strong>Gestão de Centrais</strong><br>
+  <span class="small" style="color:#dbeafe">QR Code / ficha da central</span>
+</header>
 
 <main>
   <section class="card">
-    <h1>Pesquisar central</h1>
-    <div class="muted">Escreva parte do nome/código. A pesquisa não distingue maiúsculas de minúsculas.</div>
-
-    <div style="margin-top:12px">
-      <label for="search">Central</label>
-      <div class="search-row">
-        <input id="search" autocomplete="off" placeholder="Ex.: cen, CEN-Ed. A, B...">
-        <button id="openBtn" type="button">Abrir central</button>
-      </div>
-      <div id="suggestions"></div>
+    <h2>Pesquisar central</h2>
+    <p class="small">Escreva parte do nome ou código. A pesquisa não distingue maiúsculas de minúsculas.</p>
+    <input id="search" autocomplete="off" placeholder="Ex.: cen, CEN-Ed. A, B...">
+    <div id="suggestions" class="suggestions hidden"></div>
+    <div class="actions" style="margin-top:10px">
+      <button id="openBtn">Abrir central</button>
+      <button class="secondary" id="loginBtn">Entrar para alterações</button>
+      <button class="secondary hidden" id="logoutBtn">Sair</button>
     </div>
-
-    <div id="message" class="status hidden"></div>
+    <div id="msg" style="margin-top:10px"></div>
   </section>
 
-  <section id="result" class="hidden"></section>
+  <section id="detail" class="card hidden">
+    <div class="row">
+      <div>
+        <h2 id="title"></h2>
+        <div id="status"></div>
+      </div>
+      <div style="text-align:right">
+        <button class="secondary" id="backBtn">Voltar</button>
+      </div>
+    </div>
+    <div id="summary"></div>
+
+    <h3 style="margin-top:24px">QR Code</h3>
+    <div id="qr"></div>
+    <div class="small">Este QR Code abre diretamente a ficha desta central.</div>
+
+    <h3 style="margin-top:24px">Zonas</h3>
+    <div id="zones"></div>
+
+    <h3 style="margin-top:24px">Equipamentos</h3>
+    <div id="equipment"></div>
+
+    <h3 style="margin-top:24px">Manutenções</h3>
+    <div id="maintenance"></div>
+
+    <h3 style="margin-top:24px">Intervenções</h3>
+    <div id="interventions"></div>
+
+    <div id="editArea" class="hidden" style="margin-top:24px">
+      <h3>Área de alterações</h3>
+      <p class="small">O utilizador tem de estar autenticado no Supabase para esta área ficar disponível.</p>
+      <button id="editPlaceholder">Editar ficha</button>
+    </div>
+  </section>
 </main>
 
+<dialog id="loginDialog">
+  <form method="dialog" class="modal" id="loginForm">
+    <h2>Entrar</h2>
+    <p class="small">Apenas utilizadores autenticados podem fazer alterações.</p>
+    <label>Email</label><br>
+    <input id="email" type="email" required><br><br>
+    <label>Password</label><br>
+    <input id="password" type="password" required><br><br>
+    <div class="actions">
+      <button value="cancel" type="button" class="secondary" id="cancelLogin">Cancelar</button>
+      <button type="submit">Entrar</button>
+    </div>
+    <div id="loginMsg" style="margin-top:10px"></div>
+  </form>
+</dialog>
+
 <script>
-/* ============================================================
-   SUPABASE
-   ============================================================
-   URL do projeto:
-   https://uycjgxnzkkibadxvbiyy.supabase.co
-
-   IMPORTANTE:
-   Cole aqui a sua SB PUBLISHABLE KEY (a chave pública).
-   NÃO use a Secret Key.
-   ============================================================ */
-
 const SUPABASE_URL = "https://uycjgxnzkkibadxvbiyy.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_5QFb8wU3xSjTFDbs_Ty-aw_X_Tlmq2-";
+const SUPABASE_ANON_KEY = "COLOQUE_AQUI_A_PUBLISHABLE_KEY";
 
-const searchEl = document.getElementById("search");
-const suggestionsEl = document.getElementById("suggestions");
-const messageEl = document.getElementById("message");
-const resultEl = document.getElementById("result");
-const openBtn = document.getElementById("openBtn");
+const ready = SUPABASE_ANON_KEY !== "COLOQUE_AQUI_A_PUBLISHABLE_KEY";
+const db = ready ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-let centrais = [];
-let selectedCentral = null;
+const $ = id => document.getElementById(id);
+let allCentrals = [];
+let current = null;
 
-function esc(value){
-  return String(value ?? "")
-    .replaceAll("&","&amp;").replaceAll("<","&lt;")
-    .replaceAll(">","&gt;").replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
+function esc(v){
+  return String(v ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+function fmtDate(v){
+  if(!v) return "—";
+  const s=String(v).slice(0,10).split("-");
+  return s.length===3 ? `${s[2]}/${s[1]}/${s[0]}` : esc(v);
+}
+function status(v){
+  if(!v) return ["Sem data","warn"];
+  const today=new Date(); today.setHours(0,0,0,0);
+  const d=new Date(String(v).slice(0,10)+"T00:00:00");
+  const diff=Math.ceil((d-today)/86400000);
+  return diff<0 ? ["EM ATRASO","warn"] : ["OK","ok"];
+}
+function showMsg(text, cls=""){
+  $("msg").innerHTML = text ? `<div class="${cls}">${esc(text)}</div>` : "";
+}
+function table(rows, columns){
+  if(!rows?.length) return '<p class="small">Sem dados.</p>';
+  return `<div style="overflow:auto"><table><tbody>${
+    rows.map(r=>`<tr>${columns.map(c=>`<td>${esc(r[c] ?? "—")}</td>`).join("")}</tr>`).join("")
+  }</tbody></table></div>`;
 }
 
-function showMessage(text,type="ok"){
-  messageEl.textContent=text;
-  messageEl.className="status "+type;
+async function loadCentrals(){
+  if(!ready){ showMsg("Falta colocar a Publishable Key no index.html.","err"); return; }
+  const {data,error}=await db.from("centrais")
+    .select("id_central,codigo_referencia,local_instalacao,morada,fabricante,modelo,numero_serie,tipo_central,estado,ultima_manutencao,proxima_manutencao,observacoes,fotografia_url")
+    .order("id_central");
+  if(error){ showMsg("Erro ao consultar o Supabase: "+error.message,"err"); return; }
+  allCentrals=data||[];
+  showMsg(`${allCentrals.length} centrais disponíveis.`,"ok");
+  renderSuggestions("");
 }
 
-function hideMessage(){ messageEl.className="status hidden"; }
-
-function isConfigured(){
-  return SUPABASE_URL && SUPABASE_ANON_KEY &&
-         !SUPABASE_ANON_KEY.includes("COLE_AQUI");
+function label(c){
+  return c.id_central || c.codigo_referencia || "";
 }
-
-async function supabaseGet(table, params=""){
-  const url = `${SUPABASE_URL}/rest/v1/${table}${params}`;
-  const response = await fetch(url,{
-    method:"GET",
-    headers:{
-      "apikey":SUPABASE_ANON_KEY,
-      "Authorization":`Bearer ${SUPABASE_ANON_KEY}`,
-      "Accept":"application/json"
-    }
+function renderSuggestions(q){
+  const term=q.trim().toLowerCase();
+  const list=allCentrals.filter(c=>{
+    const text=`${c.id_central||""} ${c.codigo_referencia||""} ${c.local_instalacao||""}`.toLowerCase();
+    return !term || text.includes(term);
+  }).slice(0,30);
+  if(!list.length){ $("suggestions").classList.add("hidden"); return; }
+  $("suggestions").innerHTML=list.map(c=>`
+    <div class="suggestion" data-id="${esc(c.id_central)}">
+      <strong>${esc(label(c))}</strong>
+      ${c.codigo_referencia && c.codigo_referencia!==c.id_central ? ` — ${esc(c.codigo_referencia)}`:""}
+      ${c.local_instalacao ? `<span class="small"> — ${esc(c.local_instalacao)}</span>`:""}
+    </div>`).join("");
+  $("suggestions").classList.remove("hidden");
+  document.querySelectorAll(".suggestion").forEach(el=>el.onclick=()=>{
+    $("search").value=el.dataset.id;
+    $("suggestions").classList.add("hidden");
+    openCentral(el.dataset.id);
   });
-
-  if(!response.ok){
-    const text = await response.text();
-    throw new Error(`${response.status} ${text}`);
-  }
-  return response.json();
 }
 
-/*
-  Carregamos a tabela centrais sem referir "designacao".
-  Assim evitamos o erro:
-  "column centrais.designacao does not exist".
+async function openCentral(term){
+  if(!ready){ showMsg("Falta colocar a Publishable Key no index.html.","err"); return; }
+  const q=String(term||"").trim().toLowerCase();
+  if(!q){ showMsg("Escreva uma central.","err"); return; }
+  const c=allCentrals.find(x=>String(x.id_central||"").toLowerCase()===q)
+       || allCentrals.find(x=>String(x.codigo_referencia||"").toLowerCase()===q)
+       || allCentrals.find(x=>`${x.id_central||""} ${x.codigo_referencia||""} ${x.local_instalacao||""}`.toLowerCase().includes(q));
+  if(!c){ showMsg("Central não encontrada.","err"); return; }
+  current=c;
+  $("detail").classList.remove("hidden");
+  $("title").textContent=label(c);
+  const st=status(c.proxima_manutencao);
+  $("status").innerHTML=`<span class="${st[1]}">${st[0]}</span>`;
+  $("summary").innerHTML=`
+    <table><tbody>
+      <tr><td>ID central</td><td>${esc(c.id_central)}</td></tr>
+      <tr><td>Código referência</td><td>${esc(c.codigo_referencia)}</td></tr>
+      <tr><td>Local instalação</td><td>${esc(c.local_instalacao)}</td></tr>
+      <tr><td>Morada</td><td>${esc(c.morada)}</td></tr>
+      <tr><td>Fabricante</td><td>${esc(c.fabricante)}</td></tr>
+      <tr><td>Modelo</td><td>${esc(c.modelo)}</td></tr>
+      <tr><td>N.º série</td><td>${esc(c.numero_serie)}</td></tr>
+      <tr><td>Tipo central</td><td>${esc(c.tipo_central)}</td></tr>
+      <tr><td>Estado</td><td>${esc(c.estado)}</td></tr>
+      <tr><td>Última manutenção</td><td>${fmtDate(c.ultima_manutencao)}</td></tr>
+      <tr><td>Próxima manutenção</td><td>${fmtDate(c.proxima_manutencao)}</td></tr>
+      <tr><td>Observações</td><td>${esc(c.observacoes)}</td></tr>
+    </tbody></table>`;
 
-  A pesquisa usa os campos que existem na tabela e compara
-  tudo em minúsculas, permitindo pesquisar sem maiúsculas.
-*/
-async function loadCentrais(){
-  if(!isConfigured()){
-    showMessage("Falta colocar a SB Publishable Key no index.html.","err");
-    return;
-  }
+  $("qr").innerHTML="";
+  new QRCode($("qr"),{text:location.origin+location.pathname+"?central="+encodeURIComponent(c.id_central),width:190,height:190});
 
-  try{
-    showMessage("A carregar centrais...","ok");
-    const data = await supabaseGet("centrais","?select=*");
-    centrais = Array.isArray(data) ? data : [];
-    hideMessage();
-  }catch(error){
-    console.error(error);
-    showMessage("Erro ao consultar o Supabase: "+error.message,"err");
-  }
-}
-
-function centralLabel(c){
-  return c.id_central || c.codigo_referencia || c.local_instalacao || "Central";
-}
-
-function centralSearchText(c){
-  return Object.values(c).filter(v => v !== null && v !== undefined)
-    .map(v => String(v)).join(" ").toLowerCase();
-}
-
-function findMatches(term){
-  const q=term.trim().toLowerCase();
-  if(!q) return centrais.slice(0,20);
-
-  return centrais
-    .filter(c => centralSearchText(c).includes(q))
-    .sort((a,b)=>{
-      const aa=centralLabel(a).toLowerCase();
-      const bb=centralLabel(b).toLowerCase();
-      const ap=aa.startsWith(q)?0:1;
-      const bp=bb.startsWith(q)?0:1;
-      return ap-bp || aa.localeCompare(bb,"pt");
-    })
-    .slice(0,20);
-}
-
-function renderSuggestions(items){
-  suggestionsEl.innerHTML="";
-  if(!items.length){
-    suggestionsEl.style.display="none";
-    return;
-  }
-
-  items.forEach(c=>{
-    const div=document.createElement("div");
-    div.className="suggestion";
-    div.innerHTML=`<strong>${esc(centralLabel(c))}</strong>
-      <div class="muted">${esc(c.local_instalacao || c.codigo_referencia || "")}</div>`;
-    div.addEventListener("mousedown",(ev)=>{
-      ev.preventDefault();
-      selectedCentral=c;
-      searchEl.value=centralLabel(c);
-      suggestionsEl.style.display="none";
-    });
-    suggestionsEl.appendChild(div);
-  });
-  suggestionsEl.style.display="block";
-}
-
-searchEl.addEventListener("input",()=>{
-  selectedCentral=null;
-  renderSuggestions(findMatches(searchEl.value));
-});
-
-searchEl.addEventListener("focus",()=>{
-  renderSuggestions(findMatches(searchEl.value));
-});
-
-document.addEventListener("click",(e)=>{
-  if(!e.target.closest("#search") && !e.target.closest("#suggestions")){
-    suggestionsEl.style.display="none";
-  }
-});
-
-async function openSelected(){
-  const term=searchEl.value.trim();
-
-  if(selectedCentral){
-    await showCentral(selectedCentral);
-    return;
-  }
-
-  const matches=findMatches(term);
-
-  if(!term){
-    showMessage("Escreva o nome ou código da central.","warn");
-    return;
-  }
-
-  if(matches.length===1){
-    await showCentral(matches[0]);
-  }else if(matches.length>1){
-    renderSuggestions(matches);
-    showMessage("Existem várias correspondências. Escolha uma das sugestões.","warn");
-  }else{
-    showMessage("Central não encontrada.","warn");
-  }
-}
-
-openBtn.addEventListener("click",openSelected);
-searchEl.addEventListener("keydown",e=>{
-  if(e.key==="Enter") openSelected();
-});
-
-function prettyLabel(key){
-  const labels={
-    id_central:"ID central",
-    codigo_referencia:"Código referência",
-    local_instalacao:"Local instalação",
-    morada:"Morada",
-    fabricante:"Fabricante",
-    modelo:"Modelo",
-    numero_serie:"Número de série",
-    tipo_central:"Tipo central",
-    estado:"Estado",
-    ultima_manutencao:"Última manutenção",
-    proxima_manutencao:"Próxima manutenção",
-    observacoes:"Observações",
-    fotografia_url:"Fotografia"
-  };
-  return labels[key] || key.replaceAll("_"," ");
-}
-
-function formatValue(key,value){
-  if(value===null || value===undefined || value==="") return "—";
-  if((key==="ultima_manutencao" || key==="proxima_manutencao") &&
-     /^\\d{4}-\\d{2}-\\d{2}/.test(String(value))){
-    const [y,m,d]=String(value).slice(0,10).split("-");
-    return `${d}/${m}/${y}`;
-  }
-  if(typeof value==="object") return JSON.stringify(value);
-  return String(value);
-}
-
-function statusBadge(value){
-  const s=String(value||"").toLowerCase();
-  if(["ativa","ativo","ok","normal"].includes(s))
-    return `<span class="badge ok">${esc(value)}</span>`;
-  if(["inativa","inativo","avaria","anómala","anomalia"].some(x=>s.includes(x)))
-    return `<span class="badge bad">${esc(value)}</span>`;
-  return `<span class="badge warn">${esc(value || "—")}</span>`;
-}
-
-async function loadRelated(table,idCentral){
-  try{
-    const rows=await supabaseGet(
-      table,
-      `?id_central=eq.${encodeURIComponent(idCentral)}&select=*`
-    );
-    return Array.isArray(rows)?rows:[];
-  }catch(error){
-    console.warn(`Não foi possível carregar ${table}:`,error);
-    return [];
-  }
-}
-
-function renderTable(rows, title){
-  if(!rows.length) return `
-    <section class="card">
-      <h2>${esc(title)}</h2>
-      <div class="empty">Sem registos associados.</div>
-    </section>`;
-
-  const keys=[];
-  rows.forEach(r=>Object.keys(r).forEach(k=>{
-    if(!keys.includes(k)) keys.push(k);
-  }));
-
-  const shownKeys=keys.filter(k=>k!=="created_at" && k!=="updated_at");
-
-  return `
-    <section class="card">
-      <h2>${esc(title)}</h2>
-      <div style="overflow:auto">
-        <table>
-          <thead><tr>${shownKeys.map(k=>`<th>${esc(prettyLabel(k))}</th>`).join("")}</tr></thead>
-          <tbody>
-            ${rows.map(r=>`<tr>${shownKeys.map(k=>`<td>${esc(formatValue(k,r[k]))}</td>`).join("")}</tr>`).join("")}
-          </tbody>
-        </table>
-      </div>
-    </section>`;
-}
-
-async function showCentral(c){
-  selectedCentral=c;
-  suggestionsEl.style.display="none";
-  hideMessage();
-
-  const id=c.id_central;
-  if(!id){
-    showMessage("A central não tem id_central.","err");
-    return;
-  }
-
-  resultEl.classList.remove("hidden");
-  resultEl.innerHTML=`
-    <section class="card">
-      <div class="title-row">
-        <div>
-          <div class="central-title">${esc(centralLabel(c))}</div>
-          <div class="muted">${esc(c.local_instalacao || "")}</div>
-        </div>
-        <button class="secondary" type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})">Voltar à pesquisa</button>
-      </div>
-      <div class="grid" style="margin-top:14px">
-        ${Object.entries(c)
-          .filter(([k])=>k!=="created_at" && k!=="updated_at" && k!=="fotografia_url")
-          .map(([k,v])=>`
-            <div class="field">
-              <b>${esc(prettyLabel(k))}</b>
-              <span>${k==="estado" ? statusBadge(v) : esc(formatValue(k,v))}</span>
-            </div>`).join("")}
-      </div>
-      ${c.fotografia_url ? `<div style="margin-top:14px"><b>Fotografia</b><br>
-        <img class="photo" src="${esc(c.fotografia_url)}" alt="Fotografia da central"
-             onerror="this.style.display='none'"></div>` : ""}
-    </section>
-    <div id="relatedLoading" class="card muted">A carregar zonas, equipamentos e manutenções...</div>
-    <div id="related"></div>
-  `;
-
-  const [zonas,equipamentos,manutencoes,intervencoes]=await Promise.all([
-    loadRelated("zonas",id),
-    loadRelated("equipamentos",id),
-    loadRelated("manutencoes",id),
-    loadRelated("intervencoes",id)
+  const [{data:z},{data:e},{data:m},{data:i}]=await Promise.all([
+    db.from("zonas").select("*").eq("id_central",c.id_central).order("numero_zona"),
+    db.from("equipamentos").select("*").eq("id_central",c.id_central).order("id_equipamento"),
+    db.from("manutencoes").select("*").eq("id_central",c.id_central).order("data",{ascending:false}),
+    db.from("intervencoes").select("*").eq("id_central",c.id_central).order("data",{ascending:false})
   ]);
-
-  document.getElementById("relatedLoading")?.remove();
-  const related=document.getElementById("related");
-  if(related){
-    related.innerHTML =
-      renderTable(zonas,"Zonas") +
-      renderTable(equipamentos,"Equipamentos") +
-      renderTable(manutencoes,"Manutenções") +
-      renderTable(intervencoes,"Intervenções");
-  }
+  $("zones").innerHTML=table(z||[],["numero_zona","designacao","piso_area","estado"]);
+  $("equipment").innerHTML=table(e||[],["id_equipamento","id_zona","codigo_equipamento","tipo_equipamento","localizacao_descricao","observacoes"]);
+  $("maintenance").innerHTML=table(m||[],["data","tipo_manutencao","tecnico","observacoes"]);
+  $("interventions").innerHTML=table(i||[],["data","tipo_intervencao","descricao","tecnico","observacoes"]);
+  $("editArea").classList.toggle("hidden", !(await db.auth.getUser()).data.user);
+  history.replaceState({}, "", "?central="+encodeURIComponent(c.id_central));
+  $("detail").scrollIntoView({behavior:"smooth"});
 }
 
-loadCentrais();
+$("search").addEventListener("input",e=>renderSuggestions(e.target.value));
+$("search").addEventListener("focus",e=>renderSuggestions(e.target.value));
+$("openBtn").onclick=()=>openCentral($("search").value);
+$("backBtn").onclick=()=>{ $("detail").classList.add("hidden"); history.replaceState({}, "", location.pathname); };
+document.addEventListener("click",e=>{
+  if(!e.target.closest("#search") && !e.target.closest("#suggestions")) $("suggestions").classList.add("hidden");
+});
+
+$("loginBtn").onclick=()=> $("loginDialog").showModal();
+$("cancelLogin").onclick=()=> $("loginDialog").close();
+$("loginForm").onsubmit=async e=>{
+  e.preventDefault();
+  if(!ready) return;
+  $("loginMsg").innerHTML="";
+  const {error}=await db.auth.signInWithPassword({email:$("email").value,password:$("password").value});
+  if(error){$("loginMsg").innerHTML=`<div class="err">${esc(error.message)}</div>`;return;}
+  $("loginDialog").close(); updateAuthUI();
+  if(current) $("editArea").classList.remove("hidden");
+};
+$("logoutBtn").onclick=async()=>{await db.auth.signOut();updateAuthUI();$("editArea").classList.add("hidden");};
+
+async function updateAuthUI(){
+  if(!ready)return;
+  const {data}=await db.auth.getUser();
+  const logged=!!data.user;
+  $("loginBtn").classList.toggle("hidden",logged);
+  $("logoutBtn").classList.toggle("hidden",!logged);
+  if(current)$("editArea").classList.toggle("hidden",!logged);
+}
+if(ready){
+  db.auth.onAuthStateChange(()=>updateAuthUI());
+  updateAuthUI();
+  loadCentrals().then(()=>{
+    const p=new URLSearchParams(location.search).get("central");
+    if(p){$("search").value=p;openCentral(p);}
+  });
+}else{
+  showMsg("Abra este ficheiro depois de colocar a sua Publishable Key no local indicado.","err");
+}
 </script>
 </body>
 </html>
