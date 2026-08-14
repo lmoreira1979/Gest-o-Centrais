@@ -1,257 +1,97 @@
 <!doctype html>
 <html lang="pt-PT">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Gestão de Centrais</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://unpkg.com/html5-qrcode" defer></script>
-  <style>
-    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#17202a;background:#f4f6f8}
-    *{box-sizing:border-box} body{margin:0}.wrap{max-width:900px;margin:auto;padding:16px}
-    header{background:#fff;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:5}
-    h1{font-size:1.35rem;margin:0}.muted{color:#6b7280}.card{background:#fff;border:1px solid #ddd;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 1px 3px #0000000b}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.stat{padding:12px;border-radius:10px;background:#f7f7f7}
-    .label{font-size:.78rem;color:#6b7280}.value{font-weight:650;margin-top:3px}
-    button,input,select,textarea{font:inherit} button{border:0;border-radius:10px;padding:11px 14px;cursor:pointer}
-    .primary{background:#1f6feb;color:#fff}.secondary{background:#e9eef5}.danger{background:#b42318;color:#fff}
-    input,select,textarea{width:100%;padding:10px;border:1px solid #cfd5dc;border-radius:9px;background:#fff}
-    textarea{min-height:90px}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}.status{display:inline-flex;padding:6px 10px;border-radius:999px;font-weight:700;font-size:.85rem}
-    .ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.late{background:#fee2e2;color:#991b1b}.nodate{background:#e5e7eb;color:#374151}
-    .photo{width:100%;max-height:300px;object-fit:cover;border-radius:12px}.hidden{display:none!important}
-    .list button{width:100%;text-align:left;background:#f8fafc;margin:4px 0;border:1px solid #e5e7eb}
-    #reader{max-width:420px;margin:10px auto}.small{font-size:.85rem}
-    .top-actions{display:flex;gap:8px;align-items:center;justify-content:space-between}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gestão de Centrais</title>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f4f6f8;color:#222}
+header{background:#17365d;color:#fff;padding:18px 22px}
+main{max-width:1000px;margin:24px auto;padding:0 16px}
+.card{background:#fff;border-radius:10px;padding:20px;margin-bottom:18px;box-shadow:0 2px 8px #0001}
+input,button{font-size:16px;padding:11px;border-radius:7px}
+input{width:100%;box-sizing:border-box;border:1px solid #bbb}
+button{border:0;background:#17365d;color:#fff;cursor:pointer;margin-top:10px}
+.status{padding:12px;border-radius:7px;background:#eef2f6;margin-top:15px}
+.error{background:#fdecec;color:#9b1c1c}
+.ok{background:#eaf7ea;color:#216b21}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{text-align:left;padding:9px;border-bottom:1px solid #ddd}
+.muted{color:#666}
+.hidden{display:none}
+</style>
 </head>
 <body>
-<header><div class="wrap top-actions">
-  <div><h1>Gestão de Centrais</h1><div id="sub" class="muted small">QR Code / ficha da central</div></div>
-  <button id="loginBtn" class="secondary">Entrar</button>
-</div></header>
-
-<main class="wrap">
-  <section id="login" class="card hidden">
-    <h2>Entrar</h2>
-    <p class="muted small">Use o utilizador autorizado do Supabase.</p>
-    <div class="grid">
-      <label>Email<input id="email" type="email" autocomplete="username"></label>
-      <label>Palavra-passe<input id="password" type="password" autocomplete="current-password"></label>
-    </div>
-    <div class="row" style="margin-top:10px"><button id="signIn" class="primary">Entrar</button><button id="signOut" class="secondary hidden">Sair</button></div>
-    <div id="loginMsg" class="small muted"></div>
-  </section>
-
-  <section id="home" class="card">
-    <h2>Pesquisar central</h2>
-    <p class="muted">Aponte a câmara ao QR Code ou escreva o código.</p>
-    <div class="row">
-      <input id="centralInput" placeholder="Ex.: CEN-Ed. A">
-      <button id="openCentral" class="primary">Abrir</button>
-      <button id="scanBtn" class="secondary">Ler QR</button>
-    </div>
-    <div id="reader" class="hidden"></div>
-    <div id="homeMsg" class="small muted"></div>
-  </section>
-
-  <section id="central" class="hidden">
-    <div class="card">
-      <div class="top-actions">
-        <div><h2 id="centralName">—</h2><div id="centralLocal" class="muted">—</div></div>
-        <button id="back" class="secondary">Voltar</button>
-      </div>
-      <div style="margin-top:10px"><span id="status" class="status nodate">Sem data</span></div>
-      <div id="centralPhotoBox" class="hidden" style="margin-top:12px"><img id="centralPhoto" class="photo"></div>
-    </div>
-
-    <div class="grid">
-      <div class="stat"><div class="label">Última manutenção</div><div id="lastMaint" class="value">—</div></div>
-      <div class="stat"><div class="label">Próxima manutenção</div><div id="nextMaint" class="value">—</div></div>
-      <div class="stat"><div class="label">Zonas</div><div id="zoneCount" class="value">0</div></div>
-      <div class="stat"><div class="label">Equipamentos</div><div id="equipCount" class="value">0</div></div>
-    </div>
-
-    <div class="card"><h3>Zonas</h3><div id="zones" class="list"></div></div>
-    <div class="card"><h3>Manutenções</h3><div id="maintList" class="list"></div><button id="newMaint" class="primary">+ Nova manutenção</button></div>
-    <div class="card"><h3>Intervenções</h3><div id="intList" class="list"></div><button id="newInt" class="primary">+ Nova intervenção</button></div>
-  </section>
-
-  <section id="form" class="card hidden">
-    <div class="top-actions"><h2 id="formTitle">Novo registo</h2><button id="closeForm" class="secondary">Fechar</button></div>
-    <div id="formFields"></div>
-    <div class="row" style="margin-top:12px"><button id="saveForm" class="primary">Guardar</button></div>
-    <div id="formMsg" class="small muted"></div>
-  </section>
+<header><h1>Gestão de Centrais</h1></header>
+<main>
+<div class="card">
+<h2>Pesquisar central</h2>
+<p class="muted">Escreva o nome da central.</p>
+<input id="centralInput" placeholder="Ex.: CEN-Ed. A">
+<button id="searchBtn">Abrir central</button>
+<div id="status" class="status">A aguardar pesquisa.</div>
+</div>
+<div id="ficha" class="card hidden">
+<h2 id="nomeCentral"></h2>
+<div id="dadosCentral"></div>
+<h3>Zonas</h3><div id="zonas">A carregar...</div>
+<h3>Equipamentos</h3><div id="equipamentos">A carregar...</div>
+</div>
 </main>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-/* ==========================================================
-   1) COLOQUE AQUI OS DADOS DO SEU PROJETO SUPABASE
-   Supabase Dashboard > Project Settings > API
-   ========================================================== */
 const SUPABASE_URL = "https://uycjgxnzkkibadxvbiyy.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_5QFb8wU3xSjTFDbs_Ty-aw_X_Tlmq2-";
 
-const ready = SUPABASE_ANON_KEY !== "COLOQUE_AQUI_A_ANON_KEY";
-const db = ready ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const statusEl=document.getElementById("status");
+const fichaEl=document.getElementById("ficha");
+function status(t,c=""){statusEl.textContent=t;statusEl.className="status "+c}
+if(!window.supabase) status("Não foi possível carregar a biblioteca do Supabase.","error");
+const db=window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null;
 
-const $ = id => document.getElementById(id);
-let currentCentral = null, currentZones = [], currentEquipments = [], formMode = null;
-
-function esc(v){return String(v ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
-function fmtDate(v){if(!v)return "—"; const [y,m,d]=String(v).slice(0,10).split("-"); return d&&m&&y?`${d}/${m}/${y}`:v;}
-function statusFor(v){
-  if(!v) return ["Sem data","nodate"];
-  const today=new Date(); today.setHours(0,0,0,0);
-  const d=new Date(String(v).slice(0,10)+"T00:00:00");
-  const diff=Math.ceil((d-today)/86400000);
-  if(diff<0) return ["EM ATRASO","late"];
-  if(diff<=30) return ["ATENÇÃO","warn"];
-  return ["OK","ok"];
+async function abrirCentral(){
+ const pesquisa=document.getElementById("centralInput").value.trim();
+ fichaEl.classList.add("hidden");
+ if(!pesquisa){status("Escreva o nome de uma central.","error");return}
+ if(!db){status("A ligação ao Supabase não está disponível.","error");return}
+ if(SUPABASE_ANON_KEY==="COLOQUE_AQUI_A_SUA_PUBLISHABLE_KEY"){status("Falta colocar a Publishable Key no index.html.","error");return}
+ status("A procurar a central...");
+ try{
+  const {data,error}=await db.from("centrais").select("*").ilike("designacao","%"+pesquisa+"%").limit(1);
+  if(error) throw error;
+  if(!data||!data.length){status("Central não encontrada: "+pesquisa,"error");return}
+  const c=data[0];
+  document.getElementById("nomeCentral").textContent=c.designacao||c.nome||c.id_central||"Central";
+  const campos=Object.entries(c).filter(([k,v])=>v!==null&&v!=="").map(([k,v])=>"<tr><th>"+esc(k)+"</th><td>"+esc(v)+"</td></tr>").join("");
+  document.getElementById("dadosCentral").innerHTML="<table>"+campos+"</table>";
+  await carregarZonas(c); await carregarEquipamentos(c);
+  fichaEl.classList.remove("hidden"); status("Central encontrada.","ok");
+ }catch(e){console.error(e);status("Erro ao consultar o Supabase: "+(e.message||e),"error")}
 }
-function requireReady(){
-  if(!ready){ alert("Falta configurar a ANON KEY do Supabase no index.html."); return false; }
-  return true;
+async function carregarZonas(c){
+ const el=document.getElementById("zonas"), id=c.id_central??c.id;
+ try{
+  let q=db.from("zonas").select("*"); if(id!=null) q=q.eq("id_central",id);
+  const {data,error}=await q;if(error)throw error;
+  if(!data?.length){el.innerHTML="<p class='muted'>Sem zonas registadas para esta central.</p>";return}
+  el.innerHTML="<table><tr><th>Zona</th><th>Designação</th><th>Área/Piso</th><th>Estado</th></tr>"+
+  data.map(z=>"<tr><td>"+esc(z.numero_zona)+"</td><td>"+esc(z.designacao)+"</td><td>"+esc(z.piso_area)+"</td><td>"+esc(z.estado)+"</td></tr>").join("")+"</table>";
+ }catch(e){el.innerHTML="<p class='error'>Não foi possível carregar as zonas: "+esc(e.message||e)+"</p>"}
 }
-async function loadCentral(code){
-  if(!requireReady()) return;
-  code=(code||"").trim();
-  if(!code)return;
-  $("homeMsg").textContent="A carregar…";
-  const {data:c,error}=await db.from("centrais").select("*").eq("id_central",code).maybeSingle();
-  if(error){$("homeMsg").textContent=error.message;return;}
-  if(!c){$("homeMsg").textContent="Central não encontrada: "+code;return;}
-  currentCentral=c;
-  $("homeMsg").textContent="";
-  $("home").classList.add("hidden"); $("central").classList.remove("hidden"); $("form").classList.add("hidden");
-  $("centralName").textContent=c.id_central||code;
-  $("centralLocal").textContent=c.local_instalacao||"Local não preenchido";
-  $("lastMaint").textContent=fmtDate(c.ultima_manutencao);
-  $("nextMaint").textContent=fmtDate(c.proxima_manutencao);
-  const [st,cl]=statusFor(c.proxima_manutencao); $("status").textContent=st; $("status").className="status "+cl;
-  await loadZonesAndEquipment();
-  await loadRecords();
+async function carregarEquipamentos(c){
+ const el=document.getElementById("equipamentos"), id=c.id_central??c.id;
+ try{
+  let q=db.from("equipamentos_zona").select("*"); if(id!=null) q=q.eq("id_central",id);
+  const {data,error}=await q;if(error)throw error;
+  if(!data?.length){el.innerHTML="<p class='muted'>Sem equipamentos associados nesta tabela.</p>";return}
+  const cols=Object.keys(data[0]);
+  el.innerHTML="<table><tr>"+cols.map(x=>"<th>"+esc(x)+"</th>").join("")+"</tr>"+
+  data.map(r=>"<tr>"+cols.map(x=>"<td>"+esc(r[x])+"</td>").join("")+"</tr>").join("")+"</table>";
+ }catch(e){el.innerHTML="<p class='error'>Não foi possível carregar os equipamentos: "+esc(e.message||e)+"</p>"}
 }
-async function loadZonesAndEquipment(){
-  const {data:zones,error}=await db.from("zonas").select("*").eq("id_central",currentCentral.id_central).order("id_zona");
-  if(error){$("zones").innerHTML=`<div class="muted">${esc(error.message)}</div>`;return;}
-  currentZones=zones||[];
-  $("zoneCount").textContent=currentZones.length;
-  $("zones").innerHTML=currentZones.length?currentZones.map(z=>`<button data-zone="${esc(z.id_zona)}"><b>${esc(z.numero_zona||z.id_zona)}</b> — ${esc(z.designacao||z.descricao||"")}</button>`).join(""):"<div class='muted'>Ainda não existem zonas registadas.</div>";
-  let equipments=[];
-  for(const z of currentZones){
-    const {data:links}=await db.from("equipamentos_zona").select("*").eq("id_zona",z.id_zona);
-    for(const link of (links||[])){
-      const eid=link.id_equipamento||link.codigo_equipamento;
-      if(eid){
-        const {data:e}=await db.from("equipamentos").select("*").eq("id_equipamento",eid).maybeSingle();
-        if(e) equipments.push({...e,_id_zona:z.id_zona});
-      }
-    }
-  }
-  currentEquipments=equipments;
-  $("equipCount").textContent=[...new Set(equipments.map(e=>e.id_equipamento||e.codigo_equipamento))].length;
-  document.querySelectorAll("[data-zone]").forEach(b=>b.onclick=()=>showZone(b.dataset.zone));
-}
-async function showZone(zoneId){
-  const z=currentZones.find(x=>String(x.id_zona)===String(zoneId));
-  if(!z)return;
-  const items=currentEquipments.filter(e=>String(e._id_zona)===String(zoneId));
-  let html=`<div class="card"><h3>${esc(z.numero_zona||z.id_zona)} — ${esc(z.designacao||z.descricao||"")}</h3>`;
-  html+=items.length?items.map(e=>`<div class="stat" style="margin:6px 0"><b>${esc(e.id_equipamento||e.codigo_equipamento||"Equipamento")}</b><br>${esc(e.descricao||e.local||e.descricao_local||"")}</div>`).join(""):"<div class='muted'>Sem equipamentos associados nesta zona.</div>";
-  html+="</div>";
-  const sec=document.createElement("section"); sec.innerHTML=html;
-  sec.style.position="fixed";sec.style.inset="0";sec.style.background="#f4f6f8";sec.style.zIndex="20";sec.style.overflow="auto";
-  sec.innerHTML=`<div class="wrap"><div class="top-actions"><h2>Zona</h2><button class="secondary" id="closeZone">Fechar</button></div>${html}</div>`;
-  document.body.appendChild(sec);$("closeZone").onclick=()=>sec.remove();
-}
-async function loadRecords(){
-  const id=currentCentral.id_central;
-  const [m,i]=await Promise.all([
-    db.from("manutencoes").select("*").eq("id_central",id).order("data",{ascending:false}),
-    db.from("intervencoes").select("*").eq("id_central",id).order("data",{ascending:false})
-  ]);
-  $("maintList").innerHTML=(m.data||[]).length?(m.data||[]).map(x=>`<button><b>${fmtDate(x.data)}</b> — ${esc(x.tipo_manutencao||"Manutenção") }<br><span class="small">${esc(x.empresa_tecnico||"")}</span></button>`).join(""):"<div class='muted'>Sem manutenções registadas.</div>";
-  $("intList").innerHTML=(i.data||[]).length?(i.data||[]).map(x=>`<button><b>${fmtDate(x.data)}</b> — ${esc(x.tipo||x.descricao||"Intervenção")}</button>`).join(""):"<div class='muted'>Sem intervenções registadas.</div>";
-}
-function openForm(mode){
-  formMode=mode; $("form").classList.remove("hidden");
-  $("formTitle").textContent=mode==="maintenance"?"Nova manutenção":"Nova intervenção";
-  const eqOptions=currentEquipments.map(e=>`<option value="${esc(e.id_equipamento)}">${esc(e.id_equipamento)} — ${esc(e.descricao||e.local||"")}</option>`).join("");
-  $("formFields").innerHTML=mode==="maintenance"?`
-    <div class="grid">
-      <label>Data<input id="f_data" type="date" value="${new Date().toISOString().slice(0,10)}"></label>
-      <label>Tipo<input id="f_tipo" placeholder="Ex.: Verificação anual"></label>
-      <label>Empresa / técnico<input id="f_tec"></label>
-      <label>Próxima manutenção<input id="f_next" type="date"></label>
-    </div>
-    <label style="display:block;margin-top:10px">Resultado / observações<textarea id="f_obs"></textarea></label>`
-  :`
-    <div class="grid">
-      <label>Data<input id="f_data" type="date" value="${new Date().toISOString().slice(0,10)}"></label>
-      <label>Equipamento<select id="f_eq"><option value="">Selecionar…</option>${eqOptions}</select></label>
-      <label>Tipo / anomalia<input id="f_tipo" placeholder="Ex.: Anomalia"></label>
-    </div>
-    <label style="display:block;margin-top:10px">Intervenção realizada<textarea id="f_obs"></textarea></label>`;
-  $("formMsg").textContent="";
-}
-async function saveForm(){
-  if(!requireReady())return;
-  $("formMsg").textContent="A guardar…";
-  let payload={id_central:currentCentral.id_central,data:$("f_data").value};
-  if(formMode==="maintenance"){
-    payload.id_manutencao="MAN-"+Date.now();
-    payload.tipo_manutencao=$("f_tipo").value||null;
-    payload.empresa_tecnico=$("f_tec").value||null;
-    payload.proxima_manutencao=$("f_next").value||null;
-    payload.observacoes=$("f_obs").value||null;
-    const {error}=await db.from("manutencoes").insert(payload);
-    if(error){$("formMsg").textContent=error.message;return;}
-    if(payload.proxima_manutencao){
-      await db.from("centrais").update({ultima_manutencao:payload.data,proxima_manutencao:payload.proxima_manutencao}).eq("id_central",currentCentral.id_central);
-    }
-  }else{
-    payload.id_intervencao="INT-"+Date.now();
-    payload.id_equipamento=$("f_eq").value||null;
-    payload.tipo=$("f_tipo").value||null;
-    payload.descricao=$("f_obs").value||null;
-    const {error}=await db.from("intervencoes").insert(payload);
-    if(error){$("formMsg").textContent=error.message;return;}
-  }
-  $("formMsg").textContent="Guardado com sucesso.";
-  await loadCentral(currentCentral.id_central);
-}
-async function initAuth(){
-  if(!ready)return;
-  const {data:{session}}=await db.auth.getSession();
-  $("signOut").classList.toggle("hidden",!session);
-  db.auth.onAuthStateChange((_e,s)=>$("signOut").classList.toggle("hidden",!s));
-}
-$("openCentral").onclick=()=>loadCentral($("centralInput").value);
-$("centralInput").addEventListener("keydown",e=>{if(e.key==="Enter")loadCentral($("centralInput").value)});
-$("back").onclick=()=>{$("central").classList.add("hidden");$("home").classList.remove("hidden");};
-$("newMaint").onclick=()=>openForm("maintenance");
-$("newInt").onclick=()=>openForm("intervention");
-$("closeForm").onclick=()=>$("form").classList.add("hidden");
-$("saveForm").onclick=saveForm;
-$("loginBtn").onclick=()=>$("login").classList.toggle("hidden");
-$("signIn").onclick=async()=>{if(!requireReady())return; const {error}=await db.auth.signInWithPassword({email:$("email").value,password:$("password").value});$("loginMsg").textContent=error?error.message:"Entrada efetuada."};
-$("signOut").onclick=async()=>{await db.auth.signOut();$("loginMsg").textContent="Sessão terminada."};
-$("scanBtn").onclick=async()=>{
-  if(!window.Html5Qrcode){$("homeMsg").textContent="O leitor QR ainda está a carregar. Tente novamente.";return;}
-  $("reader").classList.remove("hidden");
-  const qr=new Html5Qrcode("reader");
-  await qr.start({facingMode:"environment"},{fps:10,qrbox:250},async txt=>{
-    await qr.stop();$("reader").classList.add("hidden");
-    try{const u=new URL(txt); const c=u.searchParams.get("central"); if(c)loadCentral(c); else loadCentral(txt);}
-    catch{loadCentral(txt)}
-  },()=>{});
-};
-initAuth();
-
-const params=new URLSearchParams(location.search);
-const code=params.get("central");
-if(code) loadCentral(code);
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+document.getElementById("searchBtn").addEventListener("click",abrirCentral);
+document.getElementById("centralInput").addEventListener("keydown",e=>{if(e.key==="Enter")abrirCentral()});
 </script>
 </body>
 </html>
