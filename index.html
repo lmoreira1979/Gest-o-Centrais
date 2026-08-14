@@ -86,8 +86,46 @@
 
     <div id="editArea" class="hidden" style="margin-top:24px">
       <h3>Área de alterações</h3>
-      <p class="small">O utilizador tem de estar autenticado no Supabase para esta área ficar disponível.</p>
+      <p class="small">Esta área só está disponível depois de iniciar sessão.</p>
       <button id="editPlaceholder">Editar ficha</button>
+
+      <form id="editForm" class="hidden" style="margin-top:16px">
+        <div class="row">
+          <div>
+            <label>Central</label>
+            <input id="f_id_central" readonly>
+          </div>
+          <div>
+            <label>Código de referência</label>
+            <input id="f_codigo_referencia">
+          </div>
+        </div><br>
+        <label>Local de instalação</label>
+        <input id="f_local_instalacao"><br><br>
+        <label>Morada</label>
+        <input id="f_morada"><br><br>
+        <div class="row">
+          <div><label>Fabricante</label><input id="f_fabricante"></div>
+          <div><label>Modelo</label><input id="f_modelo"></div>
+        </div><br>
+        <div class="row">
+          <div><label>N.º de série</label><input id="f_numero_serie"></div>
+          <div><label>Tipo de central</label><input id="f_tipo_central"></div>
+        </div><br>
+        <label>Estado</label>
+        <input id="f_estado"><br><br>
+        <div class="row">
+          <div><label>Última manutenção</label><input id="f_ultima_manutencao" type="date"></div>
+          <div><label>Próxima manutenção</label><input id="f_proxima_manutencao" type="date"></div>
+        </div><br>
+        <label>Observações</label>
+        <textarea id="f_observacoes" rows="4" style="width:100%;box-sizing:border-box;font:inherit;padding:10px;border:1px solid #cbd5e1;border-radius:8px"></textarea><br><br>
+        <div class="actions">
+          <button type="submit" id="saveEditBtn">Guardar alterações</button>
+          <button type="button" class="secondary" id="cancelEditBtn">Cancelar</button>
+        </div>
+        <div id="editMsg" style="margin-top:10px"></div>
+      </form>
     </div>
   </section>
 </main>
@@ -301,6 +339,98 @@ $("logoutBtn").onclick=async()=>{
   await db.auth.signOut();
   updateAuthUI();
   $("editArea").classList.add("hidden");
+  $("editForm").classList.add("hidden");
+};
+
+
+function fillEditForm(c){
+  $("f_id_central").value = c.id_central || "";
+  $("f_codigo_referencia").value = c.codigo_referencia || "";
+  $("f_local_instalacao").value = c.local_instalacao || "";
+  $("f_morada").value = c.morada || "";
+  $("f_fabricante").value = c.fabricante || "";
+  $("f_modelo").value = c.modelo || "";
+  $("f_numero_serie").value = c.numero_serie || "";
+  $("f_tipo_central").value = c.tipo_central || "";
+  $("f_estado").value = c.estado || "";
+  $("f_ultima_manutencao").value = c.ultima_manutencao ? String(c.ultima_manutencao).slice(0,10) : "";
+  $("f_proxima_manutencao").value = c.proxima_manutencao ? String(c.proxima_manutencao).slice(0,10) : "";
+  $("f_observacoes").value = c.observacoes || "";
+  $("editMsg").innerHTML = "";
+}
+
+$("editPlaceholder").onclick = async ()=>{
+  if(!ready) return;
+  const {data,error}=await db.auth.getUser();
+  if(error || !data.user){
+    $("editMsg").innerHTML='<div class="err">É necessário iniciar sessão para editar.</div>';
+    return;
+  }
+  if(!current){
+    $("editMsg").innerHTML='<div class="err">Abra primeiro uma central.</div>';
+    return;
+  }
+  fillEditForm(current);
+  $("editForm").classList.remove("hidden");
+  $("editForm").scrollIntoView({behavior:"smooth", block:"start"});
+};
+
+$("cancelEditBtn").onclick=()=>{
+  $("editForm").classList.add("hidden");
+  $("editMsg").innerHTML="";
+};
+
+$("editForm").onsubmit=async e=>{
+  e.preventDefault();
+  if(!ready || !current) return;
+
+  const {data:authData,error:authError}=await db.auth.getUser();
+  if(authError || !authData.user){
+    $("editMsg").innerHTML='<div class="err">A sessão expirou. Entre novamente.</div>';
+    return;
+  }
+
+  const payload = {
+    codigo_referencia: $("f_codigo_referencia").value.trim() || null,
+    local_instalacao: $("f_local_instalacao").value.trim() || null,
+    morada: $("f_morada").value.trim() || null,
+    fabricante: $("f_fabricante").value.trim() || null,
+    modelo: $("f_modelo").value.trim() || null,
+    numero_serie: $("f_numero_serie").value.trim() || null,
+    tipo_central: $("f_tipo_central").value.trim() || null,
+    estado: $("f_estado").value.trim() || null,
+    ultima_manutencao: $("f_ultima_manutencao").value || null,
+    proxima_manutencao: $("f_proxima_manutencao").value || null,
+    observacoes: $("f_observacoes").value.trim() || null
+  };
+
+  const btn=$("saveEditBtn");
+  btn.disabled=true;
+  btn.textContent="A guardar...";
+  $("editMsg").innerHTML='<div class="small">A gravar no Supabase...</div>';
+
+  try{
+    const {data,error}=await db.from("centrais")
+      .update(payload)
+      .eq("id_central",current.id_central)
+      .select()
+      .single();
+
+    if(error) throw error;
+
+    current=data;
+    const idx=allCentrals.findIndex(c=>c.id_central===data.id_central);
+    if(idx>=0) allCentrals[idx]=data;
+
+    $("editMsg").innerHTML='<div class="ok">Alterações guardadas com sucesso.</div>';
+    await openCentral(data.id_central);
+    $("editForm").classList.add("hidden");
+  }catch(err){
+    $("editMsg").innerHTML=`<div class="err">Não foi possível guardar: ${esc(err?.message || err)}</div>`;
+  }finally{
+    btn.disabled=false;
+    btn.textContent="Guardar alterações";
+  }
 };
 
 async function updateAuthUI(){
@@ -324,4 +454,3 @@ if(ready){
 </script>
 </body>
 </html>
-
