@@ -74,7 +74,7 @@ const db=window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON
 async function carregarListaCentrais(){
   if(!db){status("A ligação ao Supabase não está disponível.","error");return}
   try{
-    const {data,error}=await db.from("centrais").select("id_central,designacao").order("designacao");
+    const {data,error}=await db.from("centrais").select("id_central").order("id_central");
     if(error) throw error;
     centrais=data||[];
     status(centrais.length+" centrais disponíveis. Comece a escrever para pesquisar.","ok");
@@ -92,9 +92,9 @@ function mostrarSugestoes(){
     return;
   }
 
-  const exatas=centrais.filter(c=>normalizar(c.designacao).startsWith(termo));
+  const exatas=centrais.filter(c=>normalizar(c.id_central).startsWith(termo));
   const restantes=centrais.filter(c=>{
-    const n=normalizar(c.designacao);
+    const n=normalizar(c.id_central);
     return n.includes(termo) && !n.startsWith(termo);
   });
   filtered=[...exatas,...restantes].slice(0,12);
@@ -106,7 +106,7 @@ function mostrarSugestoes(){
   }
 
   suggestionsEl.innerHTML=filtered.map((c,i)=>
-    '<div class="suggestion" data-index="'+i+'">'+esc(c.designacao)+'</div>'
+    '<div class="suggestion" data-index="'+i+'">'+esc(c.id_central)+'</div>'
   ).join("");
   suggestionsEl.classList.remove("hidden");
 
@@ -114,9 +114,9 @@ function mostrarSugestoes(){
     el.addEventListener("mousedown",e=>{
       e.preventDefault();
       const c=filtered[Number(el.dataset.index)];
-      inputEl.value=c.designacao;
+      inputEl.value=c.id_central;
       suggestionsEl.classList.add("hidden");
-      abrirCentral(c.designacao);
+      abrirCentral(c.id_central);
     });
   });
 }
@@ -134,13 +134,13 @@ async function abrirCentral(valor){
 
   status("A procurar a central...");
   try{
-    const {data,error}=await db.from("centrais").select("*").ilike("designacao","%"+pesquisa+"%").limit(1);
+    const {data,error}=await db.from("centrais").select("*").ilike("id_central","%"+pesquisa+"%").limit(1);
     if(error) throw error;
     if(!data||!data.length){status("Central não encontrada: "+pesquisa,"error");return}
 
     const c=data[0];
-    inputEl.value=c.designacao||pesquisa;
-    document.getElementById("nomeCentral").textContent=c.designacao||c.nome||c.id_central||"Central";
+    inputEl.value=c.id_central||pesquisa;
+    document.getElementById("nomeCentral").textContent=c.id_central||c.nome||"Central";
     const campos=Object.entries(c)
       .filter(([k,v])=>v!==null&&v!=="")
       .map(([k,v])=>"<tr><th>"+esc(k)+"</th><td>"+esc(v)+"</td></tr>").join("");
@@ -218,9 +218,9 @@ inputEl.addEventListener("keydown",e=>{
   if(e.key==="Enter"){
     e.preventDefault();
     if(activeIndex>=0 && filtered[activeIndex]){
-      inputEl.value=filtered[activeIndex].designacao;
+      inputEl.value=filtered[activeIndex].id_central;
       suggestionsEl.classList.add("hidden");
-      abrirCentral(filtered[activeIndex].designacao);
+      abrirCentral(filtered[activeIndex].id_central);
     }else{
       abrirCentral();
     }
