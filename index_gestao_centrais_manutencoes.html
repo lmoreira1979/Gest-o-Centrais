@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestão de Centrais</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    body{font-family:Arial,sans-serif;margin:0;background:#f3f4f6;color:#172033}
+    header{background:#173b68;color:#fff;padding:18px 24px}
+    main{max-width:1050px;margin:24px auto;padding:0 16px}
+    .card{background:#fff;border-radius:12px;padding:20px;margin-bottom:18px;box-shadow:0 2px 10px #00000012}
+    h1,h2,h3{margin-top:0}
+    input,button,select{font:inherit;padding:10px 12px;border-radius:8px;border:1px solid #cbd5e1}
+    input{width:100%;box-sizing:border-box}
+    button{cursor:pointer;background:#173b68;color:#fff;border:0}
+    button.secondary{background:#e5e7eb;color:#172033}
+    .row{display:flex;gap:10px;align-items:center}
+    .row>*{flex:1}
+    .suggestions{border:1px solid #d1d5db;border-top:0;background:#fff;max-height:260px;overflow:auto}
+    .suggestion{padding:10px 12px;cursor:pointer;border-bottom:1px solid #eee}
+    .suggestion:hover{background:#f1f5f9}
+    .ok{color:#166534;background:#dcfce7;padding:7px 10px;border-radius:999px;display:inline-block}
+    .warn{color:#92400e;background:#fef3c7;padding:7px 10px;border-radius:999px;display:inline-block}
+    .err{color:#991b1b;background:#fee2e2;padding:10px;border-radius:8px}
+    table{width:100%;border-collapse:collapse}
+    td{padding:7px;border-bottom:1px solid #e5e7eb;vertical-align:top}
+    td:first-child{font-weight:bold;width:230px}
+    .hidden{display:none}
+    #qr{margin:12px 0}
+    .small{font-size:13px;color:#64748b}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    dialog{border:0;border-radius:12px;padding:0;max-width:420px;width:calc(100% - 30px);box-shadow:0 15px 50px #0004}
+    dialog::backdrop{background:#0007}
+    .modal{padding:22px}
+  </style>
+</head>
+<body>
+<header>
+  <strong>Gestão de Centrais</strong><br>
+  <span class="small" style="color:#dbeafe">QR Code / ficha da central</span>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Pesquisar central</h2>
+    <p class="small">Escreva parte do nome ou código. A pesquisa não distingue maiúsculas de minúsculas.</p>
+    <input id="search" autocomplete="off" placeholder="Ex.: cen, CEN-Ed. A, B...">
+    <div id="suggestions" class="suggestions hidden"></div>
+    <div class="actions" style="margin-top:10px">
+      <button id="openBtn">Abrir central</button>
+      <button class="secondary" id="loginBtn">Entrar para alterações</button>
+      <button class="secondary hidden" id="logoutBtn">Sair</button>
+    </div>
+    <div id="msg" style="margin-top:10px"></div>
+  </section>
+
+  <section id="detail" class="card hidden">
+    <div class="row">
+      <div>
+        <h2 id="title"></h2>
+        <div id="status"></div>
+      </div>
+      <div style="text-align:right">
+        <button class="secondary" id="backBtn">Voltar</button>
+      </div>
+    </div>
+    <div id="summary"></div>
+
+    <h3 style="margin-top:24px">QR Code da central</h3>
+    <div id="qr"></div>
+    <div id="qrInfo" class="small"></div>
+    <button class="secondary" id="downloadQrBtn" type="button" style="margin-top:10px">Descarregar QR Code</button>
+
+    <h3 style="margin-top:24px">Zonas</h3>
+    <div id="zones"></div>
+
+    <h3 style="margin-top:24px">Equipamentos</h3>
+    <div id="equipment"></div>
+
+    <h3 style="margin-top:24px">Manutenções</h3>
+    <div id="maintenance"></div>
+    <div id="maintenanceActions" class="actions hidden" style="margin-top:10px">
+      <button id="addMaintenanceBtn" type="button">+ Registar manutenção</button>
+    </div>
+    <form id="maintenanceForm" class="hidden card" style="margin-top:12px;background:#f8fafc">
+      <h4 id="maintenanceFormTitle">Registar manutenção</h4>
+      <div class="row">
+        <div><label>Data</label><input id="m_data" type="date" required></div>
+        <div><label>Tipo de manutenção</label><input id="m_tipo"></div>
+      </div><br>
+      <div class="row">
+        <div><label>Empresa / Técnico</label><input id="m_empresa_tecnico"></div>
+        <div><label>Tipo de serviço</label><input id="m_servico"></div>
+      </div><br>
+      <div class="row">
+        <div><label>Resultado</label><input id="m_resultado"></div>
+        <div><label>N.º relatório / OT</label><input id="m_relatorio"></div>
+      </div><br>
+      <div class="row">
+        <div><label>Próxima manutenção</label><input id="m_proxima" type="date"></div>
+        <div><label>Fotografia (URL)</label><input id="m_foto" type="url"></div>
+      </div><br>
+      <label>Observações</label>
+      <textarea id="m_observacoes" rows="4" style="width:100%;box-sizing:border-box;font:inherit;padding:10px;border:1px solid #cbd5e1;border-radius:8px"></textarea><br><br>
+      <div class="actions">
+        <button type="submit" id="saveMaintenanceBtn">Guardar manutenção</button>
+        <button type="button" class="secondary" id="cancelMaintenanceBtn">Cancelar</button>
+      </div>
+      <div id="maintenanceMsg" style="margin-top:10px"></div>
+    </form>
+
+    <h3 style="margin-top:24px">Intervenções</h3>
+    <div id="interventions"></div>
+
+    <div id="editArea" class="hidden" style="margin-top:24px">
+      <h3>Área de alterações</h3>
+      <p class="small">Esta área só está disponível depois de iniciar sessão.</p>
+      <button id="editPlaceholder">Editar ficha</button>
+
+      <form id="editForm" class="hidden" style="margin-top:16px">
+        <div class="row">
+          <div>
+            <label>Central</label>
+            <input id="f_id_central" readonly>
+          </div>
+          <div>
+            <label>Código de referência</label>
+            <input id="f_codigo_referencia">
+          </div>
+        </div><br>
+        <label>Local de instalação</label>
+        <input id="f_local_instalacao"><br><br>
+        <label>Morada</label>
+        <input id="f_morada"><br><br>
+        <div class="row">
+          <div><label>Fabricante</label><input id="f_fabricante"></div>
+          <div><label>Modelo</label><input id="f_modelo"></div>
+        </div><br>
+        <div class="row">
+          <div><label>N.º de série</label><input id="f_numero_serie"></div>
+          <div><label>Tipo de central</label><input id="f_tipo_central"></div>
+        </div><br>
+        <label>Estado</label>
+        <input id="f_estado"><br><br>
+        <div class="row">
+          <div><label>Última manutenção</label><input id="f_ultima_manutencao" type="date"></div>
+          <div><label>Próxima manutenção</label><input id="f_proxima_manutencao" type="date"></div>
+        </div><br>
+        <label>Observações</label>
+        <textarea id="f_observacoes" rows="4" style="width:100%;box-sizing:border-box;font:inherit;padding:10px;border:1px solid #cbd5e1;border-radius:8px"></textarea><br><br>
+        <div class="actions">
+          <button type="submit" id="saveEditBtn">Guardar alterações</button>
+          <button type="button" class="secondary" id="cancelEditBtn">Cancelar</button>
+        </div>
+        <div id="editMsg" style="margin-top:10px"></div>
+      </form>
+    </div>
+  </section>
+</main>
+
+<dialog id="loginDialog">
+  <form method="dialog" class="modal" id="loginForm">
+    <h2>Entrar</h2>
+    <p class="small">Apenas utilizadores autenticados podem fazer alterações.</p>
+    <label>Email</label><br>
+    <input id="email" type="email" required><br><br>
+    <label>Password</label><br>
+    <input id="password" type="password" required><br><br>
+    <div class="actions">
+      <button value="cancel" type="button" class="secondary" id="cancelLogin">Cancelar</button>
+      <button type="submit">Entrar</button>
+    </div>
+    <div id="loginMsg" style="margin-top:10px"></div>
+  </form>
+</dialog>
+
+<script>
+const SUPABASE_URL = "https://uycjgxnzkkibadxvbiyy.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_5QFb8wU3xSjTFDbs_Ty-aw_X_Tlmq2-";
+
+const ready = SUPABASE_ANON_KEY !== "COLOQUE_AQUI_A_PUBLISHABLE_KEY";
+const db = ready ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+const $ = id => document.getElementById(id);
+let allCentrals = [];
+let current = null;
+let currentMaintenance = null;
+
+function esc(v){
+  return String(v ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+function fmtDate(v){
+  if(!v) return "—";
+  const s=String(v).slice(0,10).split("-");
+  return s.length===3 ? `${s[2]}/${s[1]}/${s[0]}` : esc(v);
+}
+function status(v){
+  if(!v) return ["Sem data","warn"];
+  const today=new Date(); today.setHours(0,0,0,0);
+  const d=new Date(String(v).slice(0,10)+"T00:00:00");
+  const diff=Math.ceil((d-today)/86400000);
+  return diff<0 ? ["EM ATRASO","warn"] : ["OK","ok"];
+}
+function showMsg(text, cls=""){
+  $("msg").innerHTML = text ? `<div class="${cls}">${esc(text)}</div>` : "";
+}
+function table(rows, columns){
+  if(!rows?.length) return '<p class="small">Sem dados.</p>';
+  return `<div style="overflow:auto"><table><tbody>${
+    rows.map(r=>`<tr>${columns.map(c=>`<td>${esc(r[c] ?? "—")}</td>`).join("")}</tr>`).join("")
+  }</tbody></table></div>`;
+}
+
+async function loadCentrals(){
+  if(!ready){ showMsg("Falta colocar a Publishable Key no index.html.","err"); return; }
+  const {data,error}=await db.from("centrais")
+    .select("id_central,codigo_referencia,local_instalacao,morada,fabricante,modelo,numero_serie,tipo_central,estado,ultima_manutencao,proxima_manutencao,observacoes,fotografia_url")
+    .order("id_central");
+  if(error){ showMsg("Erro ao consultar o Supabase: "+error.message,"err"); return; }
+  allCentrals=data||[];
+  showMsg(`${allCentrals.length} centrais disponíveis.`,"ok");
+  renderSuggestions("");
+}
+
+function label(c){
+  return c.id_central || c.codigo_referencia || "";
+}
+function renderSuggestions(q){
+  const term=q.trim().toLowerCase();
+  const list=allCentrals.filter(c=>{
+    const text=`${c.id_central||""} ${c.codigo_referencia||""} ${c.local_instalacao||""}`.toLowerCase();
+    return !term || text.includes(term);
+  }).slice(0,30);
+  if(!list.length){ $("suggestions").classList.add("hidden"); return; }
+  $("suggestions").innerHTML=list.map(c=>`
+    <div class="suggestion" data-id="${esc(c.id_central)}">
+      <strong>${esc(label(c))}</strong>
+      ${c.codigo_referencia && c.codigo_referencia!==c.id_central ? ` — ${esc(c.codigo_referencia)}`:""}
+      ${c.local_instalacao ? `<span class="small"> — ${esc(c.local_instalacao)}</span>`:""}
+    </div>`).join("");
+  $("suggestions").classList.remove("hidden");
+  document.querySelectorAll(".suggestion").forEach(el=>el.onclick=()=>{
+    $("search").value=el.dataset.id;
+    $("suggestions").classList.add("hidden");
+    openCentral(el.dataset.id);
+  });
+}
+
+
+function renderMaintenance(rows){
+  const box=$("maintenance");
+  if(!rows.length){
+    box.innerHTML='<p class="small">Sem registos de manutenção.</p>';
+  }else{
+    box.innerHTML=rows.map(r=>`
+      <div style="border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin:10px 0;background:#fff">
+        <strong>${esc(fmtDate(r.data))} — ${esc(r.tipo_manutencao||"Manutenção")}</strong>
+        <div class="small">Empresa/Técnico: ${esc(r.empresa_tecnico||"—")} | Serviço: ${esc(r.tipo_servico||"—")} | Resultado: ${esc(r.resultado||"—")}</div>
+        <div class="small">Relatório/OT: ${esc(r.numero_relatorio_ot||"—")} | Próxima: ${esc(fmtDate(r.proxima_manutencao))}</div>
+        ${r.observacoes?`<div style="margin-top:7px">${esc(r.observacoes)}</div>`:""}
+        ${r.fotografia_url?`<div style="margin-top:7px"><a href="${esc(r.fotografia_url)}" target="_blank" rel="noopener">Ver fotografia</a></div>`:""}
+        <div class="actions" style="margin-top:9px">
+          <button type="button" class="secondary m-edit" data-id="${esc(r.id_manutencao)}">Editar</button>
+          <button type="button" class="secondary m-delete" data-id="${esc(r.id_manutencao)}">Apagar</button>
+        </div>
+      </div>`).join("");
+  }
+  box.querySelectorAll(".m-edit").forEach(b=>b.onclick=()=>editMaintenance(rows.find(r=>String(r.id_manutencao)===String(b.dataset.id))));
+  box.querySelectorAll(".m-delete").forEach(b=>b.onclick=()=>deleteMaintenance(b.dataset.id));
+}
+async function isLoggedIn(){
+  if(!ready)return false;
+  const {data}=await db.auth.getUser();
+  return !!data.user;
+}
+function fillMaintenanceForm(r=null){
+  currentMaintenance=r;
+  $("maintenanceFormTitle").textContent=r?"Editar manutenção":"Registar manutenção";
+  $("m_data").value=r?.data?String(r.data).slice(0,10):"";
+  $("m_tipo").value=r?.tipo_manutencao||"";
+  $("m_empresa_tecnico").value=r?.empresa_tecnico||"";
+  $("m_servico").value=r?.tipo_servico||"";
+  $("m_resultado").value=r?.resultado||"";
+  $("m_relatorio").value=r?.numero_relatorio_ot||"";
+  $("m_proxima").value=r?.proxima_manutencao?String(r.proxima_manutencao).slice(0,10):"";
+  $("m_foto").value=r?.fotografia_url||"";
+  $("m_observacoes").value=r?.observacoes||"";
+  $("maintenanceMsg").innerHTML="";
+  $("maintenanceForm").classList.remove("hidden");
+  $("maintenanceForm").scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function editMaintenance(r){
+  if(!(await isLoggedIn())){showMsg("É necessário iniciar sessão para alterar uma manutenção.","err");return;}
+  if(r)fillMaintenanceForm(r);
+}
+async function deleteMaintenance(id){
+  if(!(await isLoggedIn())){showMsg("É necessário iniciar sessão para apagar uma manutenção.","err");return;}
+  if(!confirm("Apagar esta manutenção?"))return;
+  const {error}=await db.from("manutencoes").delete().eq("id_manutencao",id);
+  if(error){$("maintenanceMsg").innerHTML=`<div class="err">Não foi possível apagar: ${esc(error.message)}</div>`;return;}
+  $("maintenanceForm").classList.add("hidden");
+  await openCentral(current.id_central);
+}
+
+async function openCentral(term){
+  if(!ready){ showMsg("Falta colocar a Publishable Key no index.html.","err"); return; }
+  const q=String(term||"").trim().toLowerCase();
+  if(!q){ showMsg("Escreva uma central.","err"); return; }
+  const c=allCentrals.find(x=>String(x.id_central||"").toLowerCase()===q)
+       || allCentrals.find(x=>String(x.codigo_referencia||"").toLowerCase()===q)
+       || allCentrals.find(x=>`${x.id_central||""} ${x.codigo_referencia||""} ${x.local_instalacao||""}`.toLowerCase().includes(q));
+  if(!c){ showMsg("Central não encontrada.","err"); return; }
+  current=c;
+  $("detail").classList.remove("hidden");
+  $("title").textContent=label(c);
+  const st=status(c.proxima_manutencao);
+  $("status").innerHTML=`<span class="${st[1]}">${st[0]}</span>`;
+  $("summary").innerHTML=`
+    <table><tbody>
+      <tr><td>ID central</td><td>${esc(c.id_central)}</td></tr>
+      <tr><td>Código referência</td><td>${esc(c.codigo_referencia)}</td></tr>
+      <tr><td>Local instalação</td><td>${esc(c.local_instalacao)}</td></tr>
+      <tr><td>Morada</td><td>${esc(c.morada)}</td></tr>
+      <tr><td>Fabricante</td><td>${esc(c.fabricante)}</td></tr>
+      <tr><td>Modelo</td><td>${esc(c.modelo)}</td></tr>
+      <tr><td>N.º série</td><td>${esc(c.numero_serie)}</td></tr>
+      <tr><td>Tipo central</td><td>${esc(c.tipo_central)}</td></tr>
+      <tr><td>Estado</td><td>${esc(c.estado)}</td></tr>
+      <tr><td>Última manutenção</td><td>${fmtDate(c.ultima_manutencao)}</td></tr>
+      <tr><td>Próxima manutenção</td><td>${fmtDate(c.proxima_manutencao)}</td></tr>
+      <tr><td>Observações</td><td>${esc(c.observacoes)}</td></tr>
+    </tbody></table>`;
+
+  const qrUrl = location.origin + location.pathname + "?central=" + encodeURIComponent(c.id_central);
+  $("qr").innerHTML="";
+  new QRCode($("qr"),{text:qrUrl,width:190,height:190});
+  $("qrInfo").textContent = "Este QR Code abre diretamente a ficha da " + label(c) + ".";
+  $("downloadQrBtn").onclick = ()=>{
+    const canvas = $("qr").querySelector("canvas");
+    const img = $("qr").querySelector("img");
+    let dataUrl = canvas ? canvas.toDataURL("image/png") : (img ? img.src : "");
+    if(!dataUrl) return;
+    const a=document.createElement("a");
+    a.href=dataUrl;
+    a.download=(c.id_central || "central") + "_QR.png";
+    a.click();
+  };
+
+  const [{data:z},{data:e},{data:m},{data:i}]=await Promise.all([
+    db.from("zonas").select("*").eq("id_central",c.id_central).order("numero_zona"),
+    db.from("equipamentos").select("*").eq("id_central",c.id_central).order("id_equipamento"),
+    db.from("manutencoes").select("*").eq("id_central",c.id_central).order("data",{ascending:false}),
+    db.from("intervencoes").select("*").eq("id_central",c.id_central).order("data",{ascending:false})
+  ]);
+  $("zones").innerHTML=table(z||[],["numero_zona","designacao","piso_area","estado"]);
+  $("equipment").innerHTML=table(e||[],["id_equipamento","id_zona","codigo_equipamento","tipo_equipamento","localizacao_descricao","observacoes"]);
+  renderMaintenance(m||[]);
+  $("interventions").innerHTML=table(i||[],["data","tipo_intervencao","descricao","tecnico","observacoes"]);
+  $("editArea").classList.toggle("hidden", !(await db.auth.getUser()).data.user);
+  history.replaceState({}, "", "?central="+encodeURIComponent(c.id_central));
+  $("detail").scrollIntoView({behavior:"smooth"});
+}
+
+$("search").addEventListener("input",e=>renderSuggestions(e.target.value));
+$("search").addEventListener("focus",e=>renderSuggestions(e.target.value));
+$("openBtn").onclick=()=>openCentral($("search").value);
+$("backBtn").onclick=()=>{ $("detail").classList.add("hidden"); history.replaceState({}, "", location.pathname); };
+document.addEventListener("click",e=>{
+  if(!e.target.closest("#search") && !e.target.closest("#suggestions")) $("suggestions").classList.add("hidden");
+});
+
+$("loginBtn").onclick=()=>{
+  $("loginMsg").innerHTML="";
+  $("email").focus();
+  $("loginDialog").showModal();
+};
+
+$("cancelLogin").onclick=()=> $("loginDialog").close();
+
+async function doLogin(){
+  if(!ready){
+    $("loginMsg").innerHTML='<div class="err">A Publishable Key não está configurada no index.html.</div>';
+    return;
+  }
+
+  const email = $("email").value.trim();
+  const password = $("password").value;
+
+  if(!email || !password){
+    $("loginMsg").innerHTML='<div class="err">Preencha o email e a password.</div>';
+    return;
+  }
+
+  const submitBtn = $("loginForm").querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.textContent = "A entrar...";
+  $("loginMsg").innerHTML='<div class="small">A autenticar no Supabase...</div>';
+
+  try{
+    const result = await db.auth.signInWithPassword({email, password});
+
+    if(result.error){
+      $("loginMsg").innerHTML=`<div class="err">${esc(result.error.message)}</div>`;
+      return;
+    }
+
+    $("loginMsg").innerHTML='<div class="ok">Login efetuado com sucesso.</div>';
+    updateAuthUI();
+
+    setTimeout(()=>{
+      $("loginDialog").close();
+      if(current) $("editArea").classList.remove("hidden");
+    }, 500);
+
+  }catch(err){
+    $("loginMsg").innerHTML=`<div class="err">Erro ao tentar entrar: ${esc(err?.message || err)}</div>`;
+  }finally{
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Entrar";
+  }
+}
+
+$("loginForm").addEventListener("submit", e=>{
+  e.preventDefault();
+  doLogin();
+});
+
+$("password").addEventListener("keydown", e=>{
+  if(e.key === "Enter"){
+    e.preventDefault();
+    doLogin();
+  }
+});
+
+$("logoutBtn").onclick=async()=>{
+  await db.auth.signOut();
+  updateAuthUI();
+  $("editArea").classList.add("hidden");
+  $("editForm").classList.add("hidden");
+};
+
+
+function fillEditForm(c){
+  $("f_id_central").value = c.id_central || "";
+  $("f_codigo_referencia").value = c.codigo_referencia || "";
+  $("f_local_instalacao").value = c.local_instalacao || "";
+  $("f_morada").value = c.morada || "";
+  $("f_fabricante").value = c.fabricante || "";
+  $("f_modelo").value = c.modelo || "";
+  $("f_numero_serie").value = c.numero_serie || "";
+  $("f_tipo_central").value = c.tipo_central || "";
+  $("f_estado").value = c.estado || "";
+  $("f_ultima_manutencao").value = c.ultima_manutencao ? String(c.ultima_manutencao).slice(0,10) : "";
+  $("f_proxima_manutencao").value = c.proxima_manutencao ? String(c.proxima_manutencao).slice(0,10) : "";
+  $("f_observacoes").value = c.observacoes || "";
+  $("editMsg").innerHTML = "";
+}
+
+$("editPlaceholder").onclick = async ()=>{
+  if(!ready) return;
+  const {data,error}=await db.auth.getUser();
+  if(error || !data.user){
+    $("editMsg").innerHTML='<div class="err">É necessário iniciar sessão para editar.</div>';
+    return;
+  }
+  if(!current){
+    $("editMsg").innerHTML='<div class="err">Abra primeiro uma central.</div>';
+    return;
+  }
+  fillEditForm(current);
+  $("editForm").classList.remove("hidden");
+  $("editForm").scrollIntoView({behavior:"smooth", block:"start"});
+};
+
+$("cancelEditBtn").onclick=()=>{
+  $("editForm").classList.add("hidden");
+  $("editMsg").innerHTML="";
+};
+
+$("editForm").onsubmit=async e=>{
+  e.preventDefault();
+  if(!ready || !current) return;
+
+  const {data:authData,error:authError}=await db.auth.getUser();
+  if(authError || !authData.user){
+    $("editMsg").innerHTML='<div class="err">A sessão expirou. Entre novamente.</div>';
+    return;
+  }
+
+  const payload = {
+    codigo_referencia: $("f_codigo_referencia").value.trim() || null,
+    local_instalacao: $("f_local_instalacao").value.trim() || null,
+    morada: $("f_morada").value.trim() || null,
+    fabricante: $("f_fabricante").value.trim() || null,
+    modelo: $("f_modelo").value.trim() || null,
+    numero_serie: $("f_numero_serie").value.trim() || null,
+    tipo_central: $("f_tipo_central").value.trim() || null,
+    estado: $("f_estado").value.trim() || null,
+    ultima_manutencao: $("f_ultima_manutencao").value || null,
+    proxima_manutencao: $("f_proxima_manutencao").value || null,
+    observacoes: $("f_observacoes").value.trim() || null
+  };
+
+  const btn=$("saveEditBtn");
+  btn.disabled=true;
+  btn.textContent="A guardar...";
+  $("editMsg").innerHTML='<div class="small">A gravar no Supabase...</div>';
+
+  try{
+    const centralId = current.id_central;
+
+    const {error}=await db.from("centrais")
+      .update(payload)
+      .eq("id_central", centralId);
+
+    if(error) throw error;
+
+    // Recarrega os dados através da consulta normal, sem exigir que o UPDATE
+    // devolva exatamente uma linha. Isto evita o erro "Cannot coerce the
+    // result to a single JSON object" quando o Supabase não devolve a linha
+    // atualizada por causa das políticas de acesso.
+    const {data:refreshed,error:refreshError}=await db.from("centrais")
+      .select("id_central,codigo_referencia,local_instalacao,morada,fabricante,modelo,numero_serie,tipo_central,estado,ultima_manutencao,proxima_manutencao,observacoes,fotografia_url")
+      .eq("id_central", centralId)
+      .limit(1);
+
+    if(refreshError) throw refreshError;
+
+    if(refreshed && refreshed.length){
+      current=refreshed[0];
+      const idx=allCentrals.findIndex(c=>c.id_central===centralId);
+      if(idx>=0) allCentrals[idx]=current;
+    }
+
+    $("editMsg").innerHTML='<div class="ok">Alterações guardadas com sucesso.</div>';
+    $("editForm").classList.add("hidden");
+    await openCentral(centralId);
+  }catch(err){
+    $("editMsg").innerHTML=`<div class="err">Não foi possível guardar: ${esc(err?.message || err)}</div>`;
+  }finally{
+    btn.disabled=false;
+    btn.textContent="Guardar alterações";
+  }
+};
+
+
+$("addMaintenanceBtn").onclick=async()=>{
+  if(!(await isLoggedIn())){showMsg("É necessário iniciar sessão para registar uma manutenção.","err");return;}
+  fillMaintenanceForm(null);
+};
+$("cancelMaintenanceBtn").onclick=()=>{
+  $("maintenanceForm").classList.add("hidden");
+  $("maintenanceMsg").innerHTML="";
+  currentMaintenance=null;
+};
+$("maintenanceForm").onsubmit=async e=>{
+  e.preventDefault();
+  if(!current)return;
+  const {data:authData,error:authError}=await db.auth.getUser();
+  if(authError||!authData.user){$("maintenanceMsg").innerHTML='<div class="err">A sessão expirou. Entre novamente.</div>';return;}
+  const payload={
+    id_central:current.id_central,
+    data:$("m_data").value||null,
+    tipo_manutencao:$("m_tipo").value.trim()||null,
+    empresa_tecnico:$("m_empresa_tecnico").value.trim()||null,
+    tipo_servico:$("m_servico").value.trim()||null,
+    resultado:$("m_resultado").value.trim()||null,
+    numero_relatorio_ot:$("m_relatorio").value.trim()||null,
+    proxima_manutencao:$("m_proxima").value||null,
+    observacoes:$("m_observacoes").value.trim()||null,
+    fotografia_url:$("m_foto").value.trim()||null
+  };
+  const btn=$("saveMaintenanceBtn");
+  btn.disabled=true;btn.textContent="A guardar...";
+  try{
+    const result=currentMaintenance?.id_manutencao
+      ? await db.from("manutencoes").update(payload).eq("id_manutencao",currentMaintenance.id_manutencao)
+      : await db.from("manutencoes").insert(payload);
+    if(result.error)throw result.error;
+    $("maintenanceMsg").innerHTML='<div class="ok">Manutenção guardada com sucesso.</div>';
+    $("maintenanceForm").classList.add("hidden");
+    currentMaintenance=null;
+    await openCentral(current.id_central);
+  }catch(err){
+    $("maintenanceMsg").innerHTML=`<div class="err">Não foi possível guardar: ${esc(err?.message||err)}</div>`;
+  }finally{
+    btn.disabled=false;btn.textContent="Guardar manutenção";
+  }
+};
+
+async function updateAuthUI(){
+  if(!ready)return;
+  const {data}=await db.auth.getUser();
+  const logged=!!data.user;
+  $("loginBtn").classList.toggle("hidden",logged);
+  $("logoutBtn").classList.toggle("hidden",!logged);
+  if(current){
+    $("editArea").classList.toggle("hidden",!logged);
+    $("maintenanceActions").classList.toggle("hidden",!logged);
+  }
+}
+if(ready){
+  db.auth.onAuthStateChange(()=>updateAuthUI());
+  updateAuthUI();
+  loadCentrals().then(()=>{
+    const p=new URLSearchParams(location.search).get("central");
+    if(p){$("search").value=p;openCentral(p);}
+  });
+}else{
+  showMsg("Abra este ficheiro depois de colocar a sua Publishable Key no local indicado.","err");
+}
+</script>
+</body>
+</html>
