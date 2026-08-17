@@ -68,9 +68,10 @@
     </div>
     <div id="summary"></div>
 
-    <h3 style="margin-top:24px">QR Code</h3>
+    <h3 style="margin-top:24px">QR Code da central</h3>
     <div id="qr"></div>
-    <div class="small">Este QR Code abre diretamente a ficha desta central.</div>
+    <div id="qrInfo" class="small"></div>
+    <button class="secondary" id="downloadQrBtn" type="button" style="margin-top:10px">Descarregar QR Code</button>
 
     <h3 style="margin-top:24px">Zonas</h3>
     <div id="zones"></div>
@@ -246,8 +247,20 @@ async function openCentral(term){
       <tr><td>Observações</td><td>${esc(c.observacoes)}</td></tr>
     </tbody></table>`;
 
+  const qrUrl = location.origin + location.pathname + "?central=" + encodeURIComponent(c.id_central);
   $("qr").innerHTML="";
-  new QRCode($("qr"),{text:location.origin+location.pathname+"?central="+encodeURIComponent(c.id_central),width:190,height:190});
+  new QRCode($("qr"),{text:qrUrl,width:190,height:190});
+  $("qrInfo").textContent = "Este QR Code abre diretamente a ficha da " + label(c) + ".";
+  $("downloadQrBtn").onclick = ()=>{
+    const canvas = $("qr").querySelector("canvas");
+    const img = $("qr").querySelector("img");
+    let dataUrl = canvas ? canvas.toDataURL("image/png") : (img ? img.src : "");
+    if(!dataUrl) return;
+    const a=document.createElement("a");
+    a.href=dataUrl;
+    a.download=(c.id_central || "central") + "_QR.png";
+    a.click();
+  };
 
   const [{data:z},{data:e},{data:m},{data:i}]=await Promise.all([
     db.from("zonas").select("*").eq("id_central",c.id_central).order("numero_zona"),
